@@ -1,0 +1,121 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software 
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.tinygears.bat.tools
+
+import org.tinygears.bat.classdump.ClassDumpPrinter
+import org.tinygears.bat.io.*
+import org.tinygears.bat.util.allMatcher
+import org.tinygears.bat.util.asInternalClassName
+import org.tinygears.bat.util.classNameMatcher
+import org.tinygears.bat.util.fileNameMatcher
+import picocli.CommandLine
+import java.nio.file.Path
+import kotlin.io.path.pathString
+
+/**
+ * Command-line tool to dump class files.
+ */
+@CommandLine.Command(
+    name                 = "bat-classdump",
+    description          = ["dumps class files."],
+    parameterListHeading = "%nParameters:%n",
+    optionListHeading    = "%nOptions:%n")
+class ClassDumpCommand : Runnable {
+
+    @CommandLine.Parameters(index = "0", arity = "1", paramLabel = "inputfile", description = ["input file(s) to process (*.class / *.jar)"])
+    private lateinit var inputPath: Path
+
+    @CommandLine.Option(names = ["-o"], arity = "1", description = ["output file name (defaults to stdout)"])
+    private var outputPath: Path? = null
+
+    @CommandLine.Option(names = ["-c"], description = ["class filter"])
+    private var classNameFilter: String? = null
+
+    @CommandLine.Option(names = ["-s"], arity = "1", defaultValue = "dump", description = ["file suffix (defaults to 'dump')"])
+    private lateinit var suffix: String
+
+    @CommandLine.Option(names = ["-h"], description = ["print header"])
+    private var printHeader = false
+
+    @CommandLine.Option(names = ["-v"], description = ["verbose output"])
+    private var verbose: Boolean = false
+
+    override fun run() {
+        val dumpToConsole  = outputPath == null
+        val dumpToArchive  = outputPath != null && (outputPath!!.pathString.endsWith(".jar") || outputPath!!.pathString.endsWith(".zip"))
+        val dumpSingleFile = inputPath.endsWith(".class")
+
+        if (!dumpToConsole) {
+            if (dumpSingleFile) {
+                printVerbose("dumping class file '${inputPath}' to file '$outputPath' ...")
+            } else {
+                printVerbose("dumping class file(s) from '${inputPath}' into directory '$outputPath' ...")
+            }
+        }
+
+        val writer =
+            if (dumpToConsole) {
+                ConsoleOutputSink.of(System.out)
+            } else if (dumpSingleFile) {
+                FileOutputSink.of(outputPath!!)
+            } else {
+                val sink = if (dumpToArchive) {
+                    ZipOutputSink.of(outputPath!!)
+                } else {
+                    DirectoryOutputSink.of(outputPath!!)
+                }
+
+                transformOutputDataEntriesWith({ name -> name.replace(".class", ".$suffix") }, sink)
+            }
+
+        writer.use {
+            val classDumper      = ClassDumpPrinter(writer, printHeader)
+            val classNameMatcher = if (classNameFilter != null) classNameMatcher(classNameFilter!!) else allMatcher()
+
+            val processClassFile = { entry: DataEntry ->
+                // this is a bit of a hack: we treat the entry name as internal classname
+                val className = entry.name.removeSuffix(".class").asInternalClassName().toExternalClassName()
+                if (classNameMatcher.matches(className)) {
+                    if (!dumpToConsole) {
+                        printVerbose("  dumping class '${entry.name}'")
+                    }
+
+                    classDumper.read(entry)
+                }
+            }
+
+            val inputSource = PathInputSource.of(inputPath, true)
+            inputSource.pumpDataEntries(
+                unwrapArchives(
+                filterDataEntriesBy(fileNameMatcher("**.class"),
+                processClassFile)))
+        }
+    }
+
+    private fun printVerbose(text: String) {
+        if (verbose) {
+            println(text)
+        }
+    }
+
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val cmdLine = CommandLine(ClassDumpCommand())
+            cmdLine.execute(*args)
+        }
+    }
+}

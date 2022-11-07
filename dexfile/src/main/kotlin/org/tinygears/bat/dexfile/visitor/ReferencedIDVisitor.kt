@@ -1,0 +1,59 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.tinygears.bat.dexfile.visitor
+
+import org.tinygears.bat.dexfile.DexFile
+import kotlin.reflect.KMutableProperty0
+
+internal interface ReferencedIDVisitor {
+    fun visitStringID(dexFile: DexFile, accessor: IDAccessor) {}
+
+    fun visitTypeID(dexFile: DexFile, accessor: IDAccessor) {}
+
+    fun visitProtoID(dexFile: DexFile, accessor: IDAccessor) {}
+
+    fun visitFieldID(dexFile: DexFile, accessor: IDAccessor) {}
+
+    fun visitMethodID(dexFile: DexFile, accessor: IDAccessor) {}
+
+    fun visitMethodHandle(dexFile: DexFile, accessor: IDAccessor) {}
+}
+
+internal interface IDAccessor {
+    fun get(): Int
+    fun set(value: Int)
+}
+
+internal class PropertyAccessor(private val property: KMutableProperty0<Int>): IDAccessor {
+    override fun get(): Int {
+        return property.get()
+    }
+
+    override fun set(value: Int) {
+        property.set(value)
+    }
+}
+
+internal class ArrayElementAccessor(private val array: IntArray, private val index: Int): IDAccessor {
+    override fun get(): Int {
+        return array[index]
+    }
+
+    override fun set(value: Int) {
+        array[index] = value
+    }
+}

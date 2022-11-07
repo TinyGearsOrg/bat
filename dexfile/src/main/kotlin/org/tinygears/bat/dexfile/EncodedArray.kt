@@ -1,0 +1,88 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.tinygears.bat.dexfile
+
+import org.tinygears.bat.dexfile.io.DexDataInput
+import org.tinygears.bat.dexfile.io.DexDataOutput
+import org.tinygears.bat.dexfile.value.EncodedArrayValue
+import org.tinygears.bat.dexfile.value.visitor.EncodedArrayVisitor
+import org.tinygears.bat.dexfile.value.visitor.EncodedValueVisitor
+import org.tinygears.bat.dexfile.visitor.ReferencedIDVisitor
+
+@DataItemAnn(
+    type          = TYPE_ENCODED_ARRAY_ITEM,
+    dataAlignment = 1,
+    dataSection   = true)
+open class EncodedArray protected constructor(val array: EncodedArrayValue = EncodedArrayValue.empty()) : DataItem() {
+
+    override val isEmpty: Boolean
+        get() = array.isEmpty
+
+    override fun read(input: DexDataInput) {
+        array.readValue(input, 0)
+    }
+
+    override fun write(output: DexDataOutput) {
+        array.writeValue(output, 0)
+    }
+
+    fun accept(dexFile: DexFile, visitor: EncodedArrayVisitor) {
+        array.accept(dexFile, visitor)
+    }
+
+    fun accept(dexFile: DexFile, visitor: EncodedValueVisitor) {
+        for (i in 0 until array.size) {
+            array[i].accept(dexFile, visitor)
+        }
+    }
+
+    fun accept(dexFile: DexFile, index: Int, visitor: EncodedValueVisitor) {
+        if (index in 0 until array.size) {
+            array[index].accept(dexFile, visitor)
+        }
+    }
+
+    internal fun referencedIDsAccept(dexFile: DexFile, visitor: ReferencedIDVisitor) {
+        array.referencedIDsAccept(dexFile, visitor)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val o = other as EncodedArray
+        return array == o.array
+    }
+
+    override fun hashCode(): Int {
+        return array.hashCode()
+    }
+
+    override fun toString(): String {
+        return "EncodedArray[array=${array}]"
+    }
+
+    companion object {
+        internal fun empty(): EncodedArray {
+            return EncodedArray()
+        }
+
+        internal fun read(input: DexDataInput): EncodedArray {
+            val encodedArray = EncodedArray()
+            encodedArray.read(input)
+            return encodedArray
+        }
+    }
+}

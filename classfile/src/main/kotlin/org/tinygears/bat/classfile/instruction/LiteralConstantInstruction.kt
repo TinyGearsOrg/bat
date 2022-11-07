@@ -1,0 +1,68 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.tinygears.bat.classfile.instruction
+
+import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.Method
+import org.tinygears.bat.classfile.attribute.CodeAttribute
+import org.tinygears.bat.classfile.instruction.JvmOpCode.*
+import org.tinygears.bat.classfile.instruction.editor.InstructionWriter
+import org.tinygears.bat.classfile.instruction.visitor.InstructionVisitor
+
+class LiteralConstantInstruction: ConstantInstruction {
+
+    private constructor(opCode: JvmOpCode): super(opCode)
+
+    private constructor(opCode: JvmOpCode, constantIndex: Int): super(opCode, constantIndex)
+
+    override fun read(instructions: ByteArray, offset: Int) {
+        constantIndex = when (opCode) {
+            LDC    -> instructions[offset + 1].toInt() and 0xff
+
+            LDC_W,
+            LDC2_W -> getIndex(instructions[offset + 1], instructions[offset + 2])
+
+            else -> error("unexpected opCode '${opCode.mnemonic}")
+        }
+    }
+
+    override fun writeData(writer: InstructionWriter, offset: Int) {
+        writer.write(offset, opCode.value.toByte())
+        when (opCode) {
+            LDC    -> writer.write(offset + 1, constantIndex.toByte())
+
+            LDC_W,
+            LDC2_W -> writeIndex(writer, offset + 1, constantIndex)
+
+            else -> error("unexpected opCode '${opCode.mnemonic}")
+        }
+    }
+
+    override fun accept(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, visitor: InstructionVisitor) {
+        visitor.visitLiteralConstantInstruction(classFile, method, code, offset, this)
+    }
+
+    companion object {
+        internal fun create(opCode: JvmOpCode): LiteralConstantInstruction {
+            return LiteralConstantInstruction(opCode)
+        }
+
+        fun of(opCode: JvmOpCode, constantIndex: Int): LiteralConstantInstruction {
+            return LiteralConstantInstruction(opCode, constantIndex)
+        }
+    }
+}

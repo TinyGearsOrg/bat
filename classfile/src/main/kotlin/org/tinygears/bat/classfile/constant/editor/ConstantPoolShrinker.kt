@@ -1,0 +1,133 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.tinygears.bat.classfile.constant.editor
+
+import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.Method
+import org.tinygears.bat.classfile.attribute.Attribute
+import org.tinygears.bat.classfile.attribute.CodeAttribute
+import org.tinygears.bat.classfile.attribute.visitor.AttributeVisitor
+import org.tinygears.bat.classfile.attribute.visitor.allInstructions
+import org.tinygears.bat.classfile.constant.Constant
+import org.tinygears.bat.classfile.constant.ConstantPool
+import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
+import org.tinygears.bat.classfile.constant.visitor.IDAccessor
+import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
+import org.tinygears.bat.classfile.instruction.ConstantInstruction
+import org.tinygears.bat.classfile.instruction.JvmInstruction
+import org.tinygears.bat.classfile.instruction.editor.InstructionWriter
+import org.tinygears.bat.classfile.instruction.visitor.InstructionVisitor
+import org.tinygears.bat.classfile.visitor.ClassFileVisitor
+import org.tinygears.bat.classfile.visitor.allCode
+import org.tinygears.bat.classfile.visitor.allMethods
+
+class ConstantPoolShrinker: ClassFileVisitor {
+
+    override fun visitClassFile(classFile: ClassFile) {
+        val usageMarker    = ConstantUsageMarker()
+        val constantMarker = ReferencedConstantsMarker(usageMarker)
+        classFile.referencedConstantsAccept(false, constantMarker)
+        classFile.accept(allMethods(allCode(allInstructions(InstructionConstantMarker(constantMarker)))))
+
+        val mapping = IntArray(classFile.constantPoolSize) { -1 }
+        val shrunkConstantPool = ConstantPool.empty()
+
+        classFile.constantsAccept { _, oldIndex, constant ->
+            if (usageMarker.isUsed(constant)) {
+                mapping[oldIndex] = shrunkConstantPool.addConstant(constant)
+            }
+        }
+
+        if (shrunkConstantPool.size != classFile.constantPoolSize) {
+            // update the new constant indices in all items of the class file.
+            classFile.referencedConstantsAccept(true) { _, _, accessor ->
+                val constantIndex = accessor.get()
+                val newIndex      = mapping[constantIndex]
+                // if no mapping is available, the constant is being shrunk,
+                // we can ignore for now.
+                if (newIndex != -1) {
+                    accessor.set(newIndex)
+                }
+            }
+
+            // assign the shrunk constant pool after having visited all referenced constants
+            // as during visiting the constants must be consistent (see MethodHandleConstant).
+            classFile.constantPool = shrunkConstantPool
+
+            // update all code attributes by remapping any instruction referencing a constant pool entry.
+            classFile.accept(allMethods(allCode(InstructionReMapper(mapping))))
+        }
+    }
+}
+
+private class ReferencedConstantsMarker constructor(val usageMarker: ConstantUsageMarker): ReferencedConstantVisitor, ConstantVisitor {
+    override fun visitAnyConstant(classFile: ClassFile, owner: Any, accessor: IDAccessor) {
+        val constantIndex = accessor.get()
+        val constant = classFile.getConstant(constantIndex)
+        if (!usageMarker.isUsed(constant)) {
+            usageMarker.markUsed(constant)
+            // recursively mark referenced constants
+            constant.referencedConstantsAccept(classFile, this)
+        }
+    }
+
+    override fun visitAnyConstant(classFile: ClassFile, index: Int, constant: Constant) {
+        if (!usageMarker.isUsed(constant)) {
+            usageMarker.markUsed(constant)
+            constant.referencedConstantsAccept(classFile, this)
+        }
+    }
+}
+
+private class InstructionConstantMarker constructor(val constantMarker: ConstantVisitor): InstructionVisitor {
+    override fun visitAnyInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {}
+
+    override fun visitAnyConstantInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ConstantInstruction) {
+        instruction.constantAccept(classFile, constantMarker)
+    }
+}
+
+private class InstructionReMapper constructor(private val mapping: IntArray): AttributeVisitor, InstructionVisitor {
+    private var instructions: MutableList<JvmInstruction> = mutableListOf()
+
+    override fun visitAnyAttribute(classFile: ClassFile, attribute: Attribute) {}
+
+    override fun visitCode(classFile: ClassFile, method: Method, attribute: CodeAttribute) {
+        instructions = mutableListOf()
+
+        attribute.instructionsAccept(classFile, method, this)
+
+        val modifiedInstructions = InstructionWriter.writeInstructions(instructions)
+        val newLength = modifiedInstructions.size
+
+        if (newLength == attribute.codeLength) {
+            attribute.code = modifiedInstructions
+        } else {
+            error("remapped instructions have different size")
+        }
+    }
+
+    override fun visitAnyInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {
+        instructions.add(instruction)
+    }
+
+    override fun visitAnyConstantInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ConstantInstruction) {
+        val oldConstantIndex = instruction.constantIndex
+        instruction.constantIndex = mapping[oldConstantIndex]
+        visitAnyInstruction(classFile, method, code, offset, instruction)
+    }
+}

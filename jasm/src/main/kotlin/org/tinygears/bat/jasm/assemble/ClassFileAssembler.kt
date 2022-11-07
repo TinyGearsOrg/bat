@@ -1,0 +1,112 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.tinygears.bat.jasm.assemble
+
+import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.Version
+import org.tinygears.bat.classfile.attribute.AttributeType
+import org.tinygears.bat.classfile.attribute.ConstantValueAttribute
+import org.tinygears.bat.classfile.editor.ClassEditor
+import org.tinygears.bat.jasm.parser.JasmBaseVisitor
+import org.tinygears.bat.jasm.parser.JasmParser.*
+import java.io.PrintWriter
+
+internal class ClassFileAssembler(private val lenientMode:    Boolean      = false,
+                                  private val warningPrinter: PrintWriter? = null): JasmBaseVisitor<List<ClassFile>>() {
+
+    private lateinit var classEditor: ClassEditor
+
+    private val classFile: ClassFile
+        get() = classEditor.classFile
+
+    override fun aggregateResult(aggregate: List<ClassFile>?, nextResult: List<ClassFile>?): List<ClassFile> {
+        return (aggregate ?: emptyList()) + (nextResult ?: emptyList())
+    }
+
+    override fun visitCFile(ctx: CFileContext): List<ClassFile> {
+        val className      = ctx.className.text
+        val versionString  = ctx.sBytecode().firstOrNull()?.version?.text?.removeSurrounding("\"")
+        val superClassName = ctx.sSuper().firstOrNull()?.name?.text
+        val accessFlags    = parseAccessFlags(ctx.sAccList())
+        val version        = if (versionString != null) Version.of(versionString) else Version.JAVA_8
+
+        val classFile = ClassFile.of(className, accessFlags, superClassName, version)
+        classEditor   = ClassEditor.of(classFile)
+
+        ctx.sInterface().forEach {
+            classEditor.addInterface(it.name.text)
+        }
+
+        ctx.sField().forEach  { visitSField(it) }
+        ctx.sMethod().forEach { visitSMethod(it) }
+
+        val attributeAssembler = AttributeAssembler(classEditor)
+        ctx.sAttribute().forEach { attributeAssembler.parseAndAddAttribute(it) }
+
+        return listOf(classFile)
+    }
+
+    override fun visitSField(ctx: SFieldContext): List<ClassFile> {
+        val (_, name, type) = parseFieldObject(ctx.fieldObj.text)
+        val accessFlags     = parseAccessFlags(ctx.sAccList())
+
+        val fieldEditor = classEditor.addField(name, accessFlags, type)
+        val attributeAssembler = AttributeAssembler(fieldEditor)
+
+        val field = fieldEditor.field
+        if (field.isStatic && ctx.sBaseValue() != null) {
+            val constantAssembler  = ConstantAssembler(classEditor.constantPoolEditor)
+            val constantValueIndex = constantAssembler.parseBaseValue(ctx.sBaseValue())
+
+            val constantValueAttribute = fieldEditor.addOrGetAttribute<ConstantValueAttribute>(AttributeType.CONSTANT_VALUE)
+            constantValueAttribute.constantValueIndex = constantValueIndex
+        }
+
+        ctx.sAttribute().forEach { attributeAssembler.parseAndAddAttribute(it) }
+
+        return emptyList()
+    }
+
+    override fun visitSMethod(ctx: SMethodContext): List<ClassFile> {
+        val (_, name, descriptor) = parseSimpleMethodObject(ctx.methodObj.text)
+        val accessFlags = parseAccessFlags(ctx.sAccList())
+
+        val methodEditor = classEditor.addMethod(name, accessFlags, descriptor)
+
+        val method = methodEditor.method
+        if (!method.isAbstract && !method.isNative) {
+            val codeEditor    = methodEditor.addCode()
+            val codeAssembler = CodeAssembler(method, codeEditor, lenientMode)
+            codeAssembler.parseCode(ctx.sInstruction())
+        } else {
+            if (ctx.sInstruction().isNotEmpty()) {
+                val methodDescriptor = method.getFullExternalMethodSignature(classFile)
+                val message = "abstract or native method '$methodDescriptor' containing code instructions"
+                if (lenientMode) {
+                    warningPrinter?.println("warning: $message, skipping code")
+                } else {
+                    parserError(ctx, message)
+                }
+            }
+        }
+
+        val attributeAssembler = AttributeAssembler(methodEditor)
+        ctx.sAttribute().forEach { attributeAssembler.parseAndAddAttribute(it) }
+
+        return emptyList()
+    }
+}

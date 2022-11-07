@@ -1,0 +1,138 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.tinygears.bat.classfile
+
+import org.tinygears.bat.classfile.attribute.*
+import org.tinygears.bat.classfile.attribute.visitor.MemberAttributeVisitor
+import org.tinygears.bat.classfile.attribute.visitor.MethodAttributeVisitor
+import org.tinygears.bat.classfile.io.ClassDataInput
+import org.tinygears.bat.classfile.visitor.MemberVisitor
+import org.tinygears.bat.classfile.visitor.MethodVisitor
+import org.tinygears.bat.util.JvmClassName
+import org.tinygears.bat.util.getArgumentSize
+import org.tinygears.bat.util.parseDescriptorToJvmTypes
+import org.tinygears.bat.util.toHexString
+import java.io.IOException
+
+/**
+ * A class representing a method in a class file.
+ *
+ * @see <a href="https://docs.oracle.com/javase/specs/jvms/se13/html/jvms-4.html#jvms-4.6">Method_info structure</a>
+ */
+open class Method protected constructor(nameIndex:       Int = -1,
+                                        accessFlags:     Int =  0,
+                                        descriptorIndex: Int = -1): Member(nameIndex, accessFlags, descriptorIndex) {
+
+    override val accessFlagTarget: AccessFlagTarget
+        get() = AccessFlagTarget.METHOD
+
+    var modifiers: Set<MethodModifier> = MethodModifier.setOf(accessFlags)
+        private set
+
+    override fun updateModifiers(accessFlags: Int) {
+        modifiers = MethodModifier.setOf(accessFlags)
+    }
+
+    override fun addAttribute(attribute: Attribute) {
+        require(attribute is AttachedToMethod) { "trying to add an attribute of type '${attribute.type}' to a method"}
+        attributeMap.addAttribute(attribute)
+    }
+
+    fun getFullExternalMethodSignature(classFile: ClassFile): String {
+        return buildString {
+            val (parameterTypes, returnType) = parseDescriptorToJvmTypes(getDescriptor(classFile))
+            append(returnType.toExternalType())
+            append(' ')
+            append(classFile.className.toExternalClassName())
+            append('.')
+            append(getName(classFile))
+            append(parameterTypes.joinToString(separator = ", ", prefix = "(", postfix = ")") { it.toExternalType() })
+        }
+    }
+
+    override val isStatic: Boolean
+        get() = modifiers.contains(MethodModifier.STATIC)
+
+    val isAbstract: Boolean
+        get() = modifiers.contains(MethodModifier.ABSTRACT)
+
+    val isNative: Boolean
+        get() = modifiers.contains(MethodModifier.NATIVE)
+
+    val hasCode: Boolean
+        get() = attributeMap.get<CodeAttribute>(AttributeType.CODE) != null
+
+    fun isInitializer(classFile: ClassFile): Boolean {
+        val methodName = getName(classFile)
+        return (methodName == "<init>" || methodName == "<clinit>")
+    }
+
+    fun getExceptionClassNames(classFile: ClassFile): List<JvmClassName> {
+        return attributeMap.get<ExceptionsAttribute>(AttributeType.EXCEPTIONS)?.getExceptionClassNames(classFile) ?: emptyList()
+    }
+
+    fun getArgumentSize(classFile: ClassFile): Int {
+        var argumentSize = if (isStatic) 0 else 1
+        val (parameters, _) = parseDescriptorToJvmTypes(getDescriptor(classFile))
+        argumentSize += parameters.getArgumentSize()
+        return argumentSize
+    }
+
+    fun getArgumentCount(classFile: ClassFile): Int {
+        var argumentCount = if (isStatic) 0 else 1
+        val (parameters, _) = parseDescriptorToJvmTypes(getDescriptor(classFile))
+        argumentCount += parameters.size
+        return argumentCount
+    }
+
+    fun accept(classFile: ClassFile, index: Int, visitor: MethodVisitor) {
+        visitor.visitMethod(classFile, index, this)
+    }
+
+    override fun accept(classFile: ClassFile, index: Int, visitor: MemberVisitor) {
+        visitor.visitMethod(classFile, index, this)
+    }
+
+    fun attributesAccept(classFile: ClassFile, visitor: MethodAttributeVisitor) {
+        for (attribute in attributeMap.filterIsInstance(AttachedToMethod::class.java)) {
+            attribute.accept(classFile, this, visitor)
+        }
+    }
+
+    override fun attributesAccept(classFile: ClassFile, visitor: MemberAttributeVisitor) {
+        attributesAccept(classFile, visitor as MethodAttributeVisitor)
+    }
+
+    override fun toString(): String {
+        return "Method(nameIndex=%d,descriptorIndex=%d,accessFlags=%s)".format(nameIndex, descriptorIndex, toHexString(accessFlags, 4))
+    }
+
+    companion object {
+        fun of(nameIndex: Int, accessFlags: Int, descriptorIndex: Int): Method {
+            require(nameIndex >= 1)       { "nameIndex must be a positive number" }
+            require(accessFlags >= 0)     { "accessFlags mut not be negative" }
+            require(descriptorIndex >= 1) { "descriptorIndex must be a positive number" }
+            return Method(nameIndex, accessFlags, descriptorIndex)
+        }
+
+        @Throws(IOException::class)
+        internal fun read(input: ClassDataInput): Method {
+            val method = Method()
+            method.read(input)
+            return method
+        }
+    }
+}

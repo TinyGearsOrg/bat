@@ -1,0 +1,213 @@
+/*
+ *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.tinygears.bat.classfile.constant
+
+import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
+import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
+import org.tinygears.bat.classfile.io.ClassDataInput
+import org.tinygears.bat.classfile.io.ClassDataOutput
+import org.tinygears.bat.util.mutableListOfCapacity
+import java.io.IOException
+
+internal class ConstantPool
+    private constructor(private var constants: MutableList<Constant?> = mutableListOfCapacity(1)) {
+
+    init {
+        if (constants.isEmpty()) {
+            constants.add(null)
+        }
+    }
+
+    internal val size: Int
+        get() = constants.size
+
+    operator fun get(index: Int): Constant {
+        require(constants[index] != null) { "trying to retrieve a null constant at index '$index'" }
+        return constants[index]!!
+    }
+
+    internal fun addConstant(constant: Constant): Int {
+        constants.add(constant)
+        val constantIndex = constants.lastIndex
+        if (constant.constantPoolSize > 1) {
+            constants.add(null)
+        }
+        return constantIndex
+    }
+
+    internal fun getUtf8ConstantIndex(string: String): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is Utf8Constant && constant.value == string) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getClassConstantIndex(nameIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is ClassConstant && constant.nameIndex == nameIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getNameAndTypeConstantIndex(nameIndex: Int, descriptorIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is NameAndTypeConstant       &&
+                constant.nameIndex       == nameIndex &&
+                constant.descriptorIndex == descriptorIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getFieldRefConstantIndex(classIndex: Int, nameAndTypeIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is FieldrefConstant            &&
+                constant.classIndex       == classIndex &&
+                constant.nameAndTypeIndex == nameAndTypeIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getMethodRefConstantIndex(classIndex: Int, nameAndTypeIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is MethodrefConstant           &&
+                constant.classIndex       == classIndex &&
+                constant.nameAndTypeIndex == nameAndTypeIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getInterfaceMethodRefConstantIndex(classIndex: Int, nameAndTypeIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is InterfaceMethodrefConstant  &&
+                constant.classIndex       == classIndex &&
+                constant.nameAndTypeIndex == nameAndTypeIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getInvokeDynamicConstantIndex(bootstrapMethodAttrIndex: Int, nameAndTypeIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is InvokeDynamicConstant                             &&
+                constant.bootstrapMethodAttrIndex == bootstrapMethodAttrIndex &&
+                constant.nameAndTypeIndex == nameAndTypeIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getIntegerConstantIndex(value: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is IntegerConstant && constant.value == value) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getLongConstantIndex(value: Long): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is LongConstant && constant.value == value) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getFloatConstantIndex(value: Float): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is FloatConstant && constant.value == value) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getDoubleConstantIndex(value: Double): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is DoubleConstant && constant.value == value) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    @Throws(IOException::class)
+    internal fun read(input: ClassDataInput) {
+        val entries = input.readUnsignedShort()
+        constants = mutableListOfCapacity(entries)
+        constants.add(null)
+        var i = 1
+        while (i < entries) {
+            val constant = input.readConstant()
+            constants.add(constant)
+            if (constant.constantPoolSize > 1) {
+                constants.add(null)
+                i += 2
+            } else {
+                i++
+            }
+        }
+    }
+
+    @Throws(IOException::class)
+    internal fun write(output: ClassDataOutput) {
+        val entries = constants.size
+        output.writeShort(entries)
+        val it: ListIterator<Constant?> = constants.listIterator(1)
+        while (it.hasNext()) {
+            val constant = it.next()
+            constant?.let {
+                output.writeByte(it.type.tag)
+                it.writeConstantInfo(output)
+            }
+        }
+    }
+
+    fun accept(classFile: ClassFile, visitor: ConstantVisitor) {
+        constants.forEachIndexed { index, constant -> constant?.accept(classFile, index, visitor) }
+    }
+
+    fun constantAccept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
+        if (index in 1 until constants.size) {
+            check(constants[index] != null) { "trying to accept a null constant at index $index" }
+            constants[index]?.accept(classFile, index, visitor)
+        }
+    }
+
+    fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
+        constants.forEach { constant -> constant?.referencedConstantsAccept(classFile, visitor) }
+    }
+
+    companion object {
+        fun empty(): ConstantPool {
+            return ConstantPool()
+        }
+    }
+}
