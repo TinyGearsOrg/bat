@@ -18,6 +18,7 @@ package org.tinygears.bat.classfile.attribute
 
 import org.tinygears.bat.classfile.ClassFile
 import org.tinygears.bat.classfile.attribute.visitor.ClassAttributeVisitor
+import org.tinygears.bat.classfile.constant.MethodHandleConstant
 import org.tinygears.bat.classfile.constant.visitor.*
 import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantAdapter
 import org.tinygears.bat.classfile.io.*
@@ -88,6 +89,10 @@ data class BootstrapMethod
 
     val bootstrapMethodRefIndex: Int
         get() = _bootstrapMethodRefIndex
+
+    fun getMethodHandle(classFile: ClassFile): MethodHandleConstant {
+        return classFile.getMethodHandle(bootstrapMethodRefIndex)
+    }
 
     val size: Int
         get() = arguments.size

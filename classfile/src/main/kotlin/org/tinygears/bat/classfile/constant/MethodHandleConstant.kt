@@ -41,6 +41,10 @@ data class MethodHandleConstant private constructor(private var _referenceKind: 
     val referenceIndex: Int
         get() = _referenceIndex
 
+    fun getReferencedFieldOrMethod(classFile: ClassFile): RefConstant {
+        return classFile.getRefConstant(referenceIndex)
+    }
+
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
         _referenceKind  = input.readUnsignedByte()

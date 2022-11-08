@@ -101,33 +101,36 @@ internal class AttributePrinter constructor(private val printer:         Indenti
     }
 
     override fun visitInnerClasses(classFile: ClassFile, attribute: InnerClassesAttribute) {
-        for (entry in attribute) {
-            printer.print(".innerclass")
+        if (attribute.size > 0) {
+            attribute.map { entry ->
+                buildString {
+                    append(".innerclass")
 
-            val accessFlags =
-                formatAccessFlagsAsHumanReadable(entry.innerClassAccessFlags, AccessFlagTarget.INNER_CLASS).lowercase(Locale.getDefault())
+                    val accessFlags =
+                        formatAccessFlagsAsHumanReadable(entry.innerClassAccessFlags,
+                                                         AccessFlagTarget.INNER_CLASS).lowercase(Locale.getDefault())
 
-            if (accessFlags.isNotEmpty()) {
-                printer.print(" $accessFlags")
-            }
+                    if (accessFlags.isNotEmpty()) {
+                        append(" $accessFlags")
+                    }
 
-            val innerClassName = entry.getInnerClass(classFile)
-            printer.print(" $innerClassName")
+                    val innerClassName = entry.getInnerClass(classFile)
+                    append(" $innerClassName")
 
-            val name = entry.getInnerName(classFile)
-            if (name != null) {
-                printer.print(" as $name")
-            }
+                    val name = entry.getInnerName(classFile)
+                    if (name != null) {
+                        append(" as $name")
+                    }
 
-            val outerClassName = entry.getOuterClass(classFile)
-            if (outerClassName != null) {
-                printer.print(" in $outerClassName")
-            }
-
-            printer.println()
+                    val outerClassName = entry.getOuterClass(classFile)
+                    if (outerClassName != null) {
+                        append(" in $outerClassName")
+                    }
+                    append("\n")
+                }
+            }.joinTo(printer, "\n")
+            printedAttributes = true
         }
-
-        printedAttributes = attribute.size > 0
     }
 
     override fun visitEnclosingMethod(classFile: ClassFile, attribute: EnclosingMethodAttribute) {
@@ -146,7 +149,24 @@ internal class AttributePrinter constructor(private val printer:         Indenti
     }
 
     override fun visitBootstrapMethods(classFile: ClassFile, attribute: BootstrapMethodsAttribute) {
-        //TODO("implement")
+        if (attribute.size > 0) {
+            for (bootstrapMethod in attribute) {
+                printer.print(".bootstrapmethod ")
+                bootstrapMethod.bootstrapMethodRefAccept(classFile, constantPrinter)
+                printer.print(" {")
+
+                if (bootstrapMethod.size > 0) {
+                    printer.println()
+                    printer.levelUp()
+                    bootstrapMethod.bootstrapArgumentsAccept(classFile, constantPrinter.joinedByConstantConsumer { _, _ -> printer.println(",") })
+                    printer.levelDown()
+                    printer.println()
+                }
+
+                printer.println("}")
+            }
+            printedAttributes = true
+        }
     }
 
     override fun visitModule(classFile: ClassFile, attribute: ModuleAttribute) {
@@ -257,6 +277,7 @@ internal class AttributePrinter constructor(private val printer:         Indenti
         if (attribute.size > 0) {
             annotationPrinter.visibility = AnnotationVisibility.RUNTIME
             visitRuntimeParameterAnnotations(classFile, method, attribute)
+            printedAttributes = true
         }
     }
 
@@ -264,6 +285,7 @@ internal class AttributePrinter constructor(private val printer:         Indenti
         if (attribute.size > 0) {
             annotationPrinter.visibility = AnnotationVisibility.BUILD
             visitRuntimeParameterAnnotations(classFile, method, attribute)
+            printedAttributes = true
         }
     }
 

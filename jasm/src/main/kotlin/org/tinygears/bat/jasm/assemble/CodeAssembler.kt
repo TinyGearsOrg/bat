@@ -34,25 +34,10 @@ internal class CodeAssembler constructor(private val method:      Method,
         val exceptionEntries = mutableListOf<ExceptionEntry>()
         var codeOffset = 0
 
-        var maxStack  = -1
-        var maxLocals = -1
-
         iCtx.forEach { ctx ->
             try {
                 val t = ctx.getChild(0) as ParserRuleContext
                 val insn: JvmInstruction? = when (t.ruleIndex) {
-                    RULE_fMaxStack -> {
-                        val c = t as FMaxStackContext
-                        maxStack = c.maxStack.text.toInt()
-                        null
-                    }
-
-                    RULE_fMaxLocals -> {
-                        val c = t as FMaxLocalsContext
-                        maxLocals = c.maxLocals.text.toInt()
-                        null
-                    }
-
                     RULE_sLabel -> {
                         val c = t as SLabelContext
                         val label = c.label.text

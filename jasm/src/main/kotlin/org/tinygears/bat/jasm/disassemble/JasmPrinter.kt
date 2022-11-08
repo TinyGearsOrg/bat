@@ -82,9 +82,7 @@ class JasmPrinter constructor(writer: Writer = OutputStreamWriter(System.out))
             }
         }
 
-        printer.println()
         printer.println(".end class")
-
         printer.flush()
     }
 

@@ -16,8 +16,9 @@
 
 package org.tinygears.bat.jasm.disassemble
 
-import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.*
 import org.tinygears.bat.classfile.constant.*
+import org.tinygears.bat.classfile.constant.ReferenceKind.*
 import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.io.IndentingPrinter
 import org.tinygears.bat.util.escapeAsJavaString
@@ -84,5 +85,26 @@ internal class ConstantPrinter constructor(private val printer: IndentingPrinter
         val type = nameAndType.getDescriptor(classFile)
 
         printer.print("bootstrap_method_${constant.bootstrapMethodAttrIndex}@${name}${type}")
+    }
+
+    override fun visitMethodHandleConstant(classFile: ClassFile, index: Int, constant: MethodHandleConstant) {
+        val referenceKind = when (constant.referenceKind) {
+            GET_FIELD          -> "getfield"
+            GET_STATIC         -> "getstatic"
+            PUT_FIELD          -> "putfield"
+            PUT_STATIC         -> "putstatic"
+            INVOKE_VIRTUAL     -> "invokevirtual"
+            INVOKE_STATIC      -> "invokestatic"
+            INVOKE_SPECIAL     -> "invokespecial"
+            NEW_INVOKE_SPECIAL -> "newinvokespecial"
+            INVOKE_INTERFACE   -> "invokeinterface"
+        }
+
+        printer.print("$referenceKind ")
+        constant.getReferencedFieldOrMethod(classFile).accept(classFile, this)
+    }
+
+    override fun visitMethodTypeConstant(classFile: ClassFile, index: Int, constant: MethodTypeConstant) {
+        printer.print(constant.getDescriptor(classFile))
     }
 }

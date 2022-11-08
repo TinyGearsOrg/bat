@@ -298,12 +298,8 @@ sInstruction
     | fLine
     | fStartlocal
     | fEndlocal
-    | fMaxStack
-    | fMaxLocals
     ;
 
-fMaxStack  : '.maxstack'  maxStack=INT;
-fMaxLocals : '.maxlocals' maxLocals=INT;
 fLine      : '.line' line=INT;
 fStartlocal: '.local' variable=INT ',' name=STRING (':' descriptor=(PRIMITIVE_TYPE | OBJECT_TYPE | ARRAY_TYPE))? (',' signature=STRING)? ;
 fEndlocal  : '.end local' variable=INT;

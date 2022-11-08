@@ -35,9 +35,6 @@ internal class CodePrinter constructor(private val printer:         IndentingPri
         debugState.clear()
         localVariableInfos.clear()
 
-        printer.println(".maxstack ${attribute.maxStack}")
-        printer.println(".maxlocals ${attribute.maxLocals}")
-
         // fill debug info
         attribute.attributesAccept(classFile, method, this)
         for ((_, infos) in localVariableInfos) {

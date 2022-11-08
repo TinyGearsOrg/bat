@@ -171,12 +171,16 @@ open class ClassFile protected constructor(version:     Version = Version.JAVA_8
 
     // helper methods to access constant pool entries
 
-    internal fun getConstant(constantIndex: Int): Constant {
+    fun getConstant(constantIndex: Int): Constant {
         return constantPool[constantIndex]
     }
 
     fun getClass(constantIndex: Int): ClassConstant {
         return (constantPool[constantIndex] as ClassConstant)
+    }
+
+    fun getRefConstant(constantIndex: Int): RefConstant {
+        return (constantPool[constantIndex] as RefConstant)
     }
 
     fun getFieldref(constantIndex: Int): FieldrefConstant {
@@ -193,6 +197,10 @@ open class ClassFile protected constructor(version:     Version = Version.JAVA_8
 
     fun getInvokeDynamic(constantIndex: Int): InvokeDynamicConstant {
         return (constantPool[constantIndex] as InvokeDynamicConstant)
+    }
+
+    fun getMethodHandle(constantIndex: Int): MethodHandleConstant {
+        return (constantPool[constantIndex] as MethodHandleConstant)
     }
 
     fun getModule(constantIndex: Int): ModuleConstant {

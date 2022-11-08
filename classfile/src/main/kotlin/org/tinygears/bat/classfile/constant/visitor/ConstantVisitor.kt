@@ -17,6 +17,8 @@ package org.tinygears.bat.classfile.constant.visitor
 
 import org.tinygears.bat.classfile.ClassFile
 import org.tinygears.bat.classfile.constant.*
+import org.tinygears.bat.visitor.AbstractMultiVisitor
+import java.util.function.BiConsumer
 
 fun filteredByConstantType(acceptedTypes: Set<ConstantType>, visitor: ConstantVisitor): ConstantVisitor {
     return ConstantVisitor { classFile, index, constant ->
@@ -24,6 +26,10 @@ fun filteredByConstantType(acceptedTypes: Set<ConstantType>, visitor: ConstantVi
             constant.accept(classFile, index, visitor)
         }
     }
+}
+
+fun multiConstantVisitorOf(visitor: ConstantVisitor, vararg visitors: ConstantVisitor): ConstantVisitor {
+    return MultiConstantVisitor(visitor, *visitors)
 }
 
 fun interface ConstantVisitor {
@@ -99,5 +105,30 @@ fun interface ConstantVisitor {
 
     fun visitPackageConstant(classFile: ClassFile, index: Int, constant: PackageConstant) {
         visitAnyConstant(classFile, index, constant)
+    }
+
+    fun joinedByConstantConsumer(consumer: BiConsumer<ClassFile, Constant>): ConstantVisitor {
+        val joiner: ConstantVisitor = object : ConstantVisitor {
+            private var firstVisited = false
+            override fun visitAnyConstant(classFile: ClassFile, index: Int, constant: Constant) {
+                if (firstVisited) {
+                    consumer.accept(classFile, constant)
+                } else {
+                    firstVisited = true
+                }
+            }
+        }
+        return multiConstantVisitorOf(joiner, this)
+    }
+}
+
+private class MultiConstantVisitor constructor(       visitor:       ConstantVisitor,
+                                               vararg otherVisitors: ConstantVisitor)
+    : AbstractMultiVisitor<ConstantVisitor>(visitor, *otherVisitors), ConstantVisitor {
+
+    override fun visitAnyConstant(classFile: ClassFile, index: Int, constant: Constant) {
+        for (visitor in visitors) {
+            constant.accept(classFile, index, visitor)
+        }
     }
 }
