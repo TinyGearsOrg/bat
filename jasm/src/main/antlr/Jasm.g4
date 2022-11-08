@@ -202,6 +202,7 @@ sAttribute
     | sInnerClass
     | sBootstrapMethod
     | sThrows
+    | sSourceDebugExtension
     ;
 
 sBytecode  : '.bytecode' version=STRING;
@@ -248,7 +249,7 @@ sTypeAnnotation
     ;
 
 sAnnotationDefault
-    : '.annotationdefault' value=sBaseValue ;
+    : '.annotationdefault' value=sAnnotationValue ;
 
 sEnclosingMethod
     : '.enclosingmethod' methodObj=(CLASS_NAME | METHOD_FULL) ;
@@ -261,6 +262,9 @@ sInnerClass
 
 sBootstrapMethod
     : '.bootstrapmethod' refKind=REFKIND method=METHOD_FULL sBaseValue* '.end bootstrapmethod' ;
+
+sSourceDebugExtension
+    : '.sourcedebugextension' STRING ;
 
 sSubannotation
 	: '.subannotation' type=OBJECT_TYPE (sAnnotationKeyName '=' sAnnotationValue )* '.end subannotation' ;
@@ -319,6 +323,7 @@ sInstruction
     | fWideLiteralConstantInstructions
     | fExceptionInstructions
     | fNullReferenceInstructions
+    | fNopInstruction
     | fBranchInstructions
     | fArrayInstructions
     | fPrimitiveArrayInstructions
@@ -473,6 +478,8 @@ fWideLiteralConstantInstructions: op=
     ;
 
 fExceptionInstructions: op='athrow';
+
+fNopInstruction: op='nop';
 
 fNullReferenceInstructions: op='aconst_null';
 

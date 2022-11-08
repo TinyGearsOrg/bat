@@ -172,6 +172,11 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             TODO("implement ${instruction.opCode.mnemonic}")
         }
 
+        override fun visitNopInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: NopInstruction) {
+            val frameBefore = framesBefore[offset]
+            framesAfter[offset] = frameBefore!!.copy()
+        }
+
         override fun visitStackInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: StackInstruction) {
             val frameBefore = framesBefore[offset]
             val frameAfter  = frameBefore!!.copy()
@@ -579,12 +584,14 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 }
 
                 D2L,
+                F2L,
                 I2L -> {
                     frameAfter.pop()
                     frameAfter.push(LongType)
                 }
 
                 L2D,
+                F2D,
                 I2D -> {
                     frameAfter.pop()
                     frameAfter.push(DoubleType)
@@ -676,6 +683,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 FADD,
                 FSUB,
                 FMUL,
+                FREM,
                 FDIV -> {
                     frameAfter.pop(2)
                     frameAfter.push(FloatType)
@@ -684,6 +692,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 DSUB,
                 DADD,
                 DMUL,
+                DREM,
                 DDIV -> {
                     frameAfter.pop(2)
                     frameAfter.push(DoubleType)

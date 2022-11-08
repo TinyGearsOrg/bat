@@ -96,6 +96,7 @@ internal class CodeAssembler constructor(private val method:      Method,
                     RULE_fArrayInstructions               -> instructionAssembler.parseArrayInstructions(t as FArrayInstructionsContext)
                     RULE_fExceptionInstructions           -> instructionAssembler.parseExceptionInstructions(t as FExceptionInstructionsContext)
                     RULE_fNullReferenceInstructions       -> instructionAssembler.parseNullReferenceInstructions(t as FNullReferenceInstructionsContext)
+                    RULE_fNopInstruction                  -> instructionAssembler.parseNopInstructions(t as FNopInstructionContext)
                     RULE_fReturnInstructions              -> instructionAssembler.parseReturnInstructions(t as FReturnInstructionsContext)
                     RULE_fMonitorInstructions             -> instructionAssembler.parseMonitorInstructions(t as FMonitorInstructionsContext)
                     RULE_fCompareInstructions             -> instructionAssembler.parseCompareInstructions(t as FCompareInstructionsContext)

@@ -106,7 +106,7 @@ internal class AttributeAssembler constructor(private val attributeEditor: Attri
     }
 
     private fun parseAndAddAnnotationDefaultAttribute(ctx: SAnnotationDefaultContext) {
-        val elementValue = elementValueAssembler.parseBaseValue(ctx.value)
+        val elementValue = annotationAssembler.parseAnnotationValueContext(ctx.value)
 
         val attribute: AnnotationDefaultAttribute = attributeEditor.addOrGetAttribute(AttributeType.ANNOTATION_DEFAULT)
         attribute.elementValue = elementValue

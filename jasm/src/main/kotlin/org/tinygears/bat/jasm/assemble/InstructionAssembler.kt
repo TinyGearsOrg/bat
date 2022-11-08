@@ -85,6 +85,14 @@ internal class InstructionAssembler constructor(private val constantPoolEditor: 
         return NullReferenceInstruction.of(opcode)
     }
 
+    fun parseNopInstructions(ctx: FNopInstructionContext): NopInstruction {
+        val mnemonic = ctx.op.text
+        val opcode   = JvmOpCode[mnemonic]
+        require(opcode == JvmOpCode.NOP)
+
+        return NopInstruction.create()
+    }
+
     fun parseReturnInstructions(ctx: FReturnInstructionsContext): ReturnInstruction {
         val mnemonic = ctx.op.text
         val opcode   = JvmOpCode[mnemonic]

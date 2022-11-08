@@ -16,13 +16,11 @@
 
 package org.tinygears.bat.jasm.assemble
 
-import org.tinygears.bat.classfile.attribute.annotation.Annotation
-import org.tinygears.bat.classfile.attribute.annotation.AnnotationComponent
-import org.tinygears.bat.classfile.attribute.annotation.ArrayElementValue
-import org.tinygears.bat.classfile.attribute.annotation.ElementValue
 import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.jasm.parser.JasmParser.*
 import org.antlr.v4.runtime.ParserRuleContext
+import org.tinygears.bat.classfile.attribute.annotation.*
+import org.tinygears.bat.classfile.attribute.annotation.Annotation
 
 internal class AnnotationAssembler
     constructor(private val constantPoolEditor:    ConstantPoolEditor,
@@ -55,7 +53,7 @@ internal class AnnotationAssembler
         return annotationElements
     }
 
-    private fun parseAnnotationValueContext(ctx: SAnnotationValueContext): ElementValue {
+    fun parseAnnotationValueContext(ctx: SAnnotationValueContext): ElementValue {
         val t = ctx.getChild(0) as ParserRuleContext
         return when (t.ruleIndex) {
             RULE_sArrayValue -> {
@@ -70,20 +68,18 @@ internal class AnnotationAssembler
             }
 
             RULE_sSubannotation -> {
-//                val subAnnotationContext = t as SmaliParser.SSubannotationContext
-//
-//                val annotationType = subAnnotationContext.OBJECT_TYPE().text
-//                val annotationTypeIndex = dexEditor.addOrGetTypeIDIndex(annotationType)
-//
-//                val annotationElements =
-//                    parseAnnotationAnnotationElements(subAnnotationContext.sAnnotationKeyName(),
-//                                                      subAnnotationContext.sAnnotationValue())
-//
-//                return EncodedAnnotationValue.of(annotationTypeIndex, annotationElements)
-                TODO("implement")
+                val subAnnotationContext = t as SSubannotationContext
+
+                val annotationType = subAnnotationContext.OBJECT_TYPE().text
+                val annotationTypeIndex = constantPoolEditor.addOrGetUtf8ConstantIndex(annotationType)
+
+                val annotationComponents =
+                    parseAnnotationComponents(subAnnotationContext.sAnnotationKeyName(), subAnnotationContext.sAnnotationValue())
+
+                AnnotationElementValue.of(Annotation.of(annotationTypeIndex, annotationComponents))
             }
 
-            RULE_sBaseValue -> return elementValueAssembler.parseBaseValue(t as SBaseValueContext)
+            RULE_sBaseValue -> elementValueAssembler.parseBaseValue(t as SBaseValueContext)
             else            -> null
         } ?: parserError(ctx, "failed to parse annotation value")
     }

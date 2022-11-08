@@ -28,8 +28,12 @@ class NopInstruction private constructor(opCode: JvmOpCode): SimpleInstruction(o
     }
 
     companion object {
-        internal fun create(opCode: JvmOpCode): JvmInstruction {
+        internal fun create(opCode: JvmOpCode): NopInstruction {
             return NopInstruction(opCode)
+        }
+
+        fun create(): NopInstruction {
+            return NopInstruction(JvmOpCode.NOP)
         }
     }
 }

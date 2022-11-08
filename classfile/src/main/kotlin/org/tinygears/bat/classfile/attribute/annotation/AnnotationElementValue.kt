@@ -55,5 +55,9 @@ data class AnnotationElementValue private constructor(private var _annotation: A
         internal fun empty(): AnnotationElementValue {
             return AnnotationElementValue()
         }
+
+        fun of(annotation: Annotation): AnnotationElementValue {
+            return AnnotationElementValue(annotation)
+        }
     }
 }
