@@ -72,7 +72,7 @@ private class MultiAnnotationVisitor constructor(             visitor: Annotatio
 
     override fun visitAnyAnnotation(classFile: ClassFile, annotation: Annotation) {
         for (visitor in visitors) {
-            visitor.visitAnnotation(classFile, annotation)
+            annotation.accept(classFile, visitor)
         }
     }
 }
