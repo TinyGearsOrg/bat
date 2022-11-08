@@ -149,21 +149,24 @@ internal class AttributePrinter constructor(private val printer:         Indenti
     }
 
     override fun visitBootstrapMethods(classFile: ClassFile, attribute: BootstrapMethodsAttribute) {
-        if (attribute.size > 0) {
-            for (bootstrapMethod in attribute) {
+        val bootstrapMethodCount = attribute.size
+        if (bootstrapMethodCount > 0) {
+            for ((index, bootstrapMethod) in attribute.withIndex()) {
                 printer.print(".bootstrapmethod ")
-                bootstrapMethod.bootstrapMethodRefAccept(classFile, constantPrinter)
-                printer.print(" {")
+                bootstrapMethod.getMethodHandle(classFile).print(classFile, constantPrinter)
+                printer.println()
 
                 if (bootstrapMethod.size > 0) {
-                    printer.println()
                     printer.levelUp()
-                    bootstrapMethod.bootstrapArgumentsAccept(classFile, constantPrinter.joinedByConstantConsumer { _, _ -> printer.println(",") })
+                    bootstrapMethod.bootstrapArgumentsAccept(classFile, constantPrinter.joinedByConstantConsumer { _, _ -> printer.println() })
                     printer.levelDown()
                     printer.println()
+                    printer.println(".end bootstrapmethod")
                 }
 
-                printer.println("}")
+                if (index < (bootstrapMethodCount - 1)) {
+                    printer.println()
+                }
             }
             printedAttributes = true
         }

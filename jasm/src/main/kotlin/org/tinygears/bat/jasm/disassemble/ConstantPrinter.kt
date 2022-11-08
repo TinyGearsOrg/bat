@@ -23,7 +23,7 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.io.IndentingPrinter
 import org.tinygears.bat.util.escapeAsJavaString
 
-internal class ConstantPrinter constructor(private val printer: IndentingPrinter): ConstantVisitor {
+internal class ConstantPrinter constructor(val printer: IndentingPrinter): ConstantVisitor {
 
     override fun visitAnyConstant(classFile: ClassFile, index: Int, constant: Constant) {
         TODO("Not yet implemented")
@@ -88,23 +88,16 @@ internal class ConstantPrinter constructor(private val printer: IndentingPrinter
     }
 
     override fun visitMethodHandleConstant(classFile: ClassFile, index: Int, constant: MethodHandleConstant) {
-        val referenceKind = when (constant.referenceKind) {
-            GET_FIELD          -> "getfield"
-            GET_STATIC         -> "getstatic"
-            PUT_FIELD          -> "putfield"
-            PUT_STATIC         -> "putstatic"
-            INVOKE_VIRTUAL     -> "invokevirtual"
-            INVOKE_STATIC      -> "invokestatic"
-            INVOKE_SPECIAL     -> "invokespecial"
-            NEW_INVOKE_SPECIAL -> "newinvokespecial"
-            INVOKE_INTERFACE   -> "invokeinterface"
-        }
-
-        printer.print("$referenceKind ")
-        constant.getReferencedFieldOrMethod(classFile).accept(classFile, this)
+        printer.print(".methodhandle ")
+        constant.print(classFile, this)
     }
 
     override fun visitMethodTypeConstant(classFile: ClassFile, index: Int, constant: MethodTypeConstant) {
-        printer.print(constant.getDescriptor(classFile))
+        printer.print(".methodtype ${constant.getDescriptor(classFile)}")
     }
+}
+
+internal fun MethodHandleConstant.print(classFile: ClassFile, constantPrinter: ConstantPrinter) {
+    constantPrinter.printer.print("${referenceKind.simpleName} ")
+    this.getReferencedFieldOrMethod(classFile).accept(classFile, constantPrinter)
 }

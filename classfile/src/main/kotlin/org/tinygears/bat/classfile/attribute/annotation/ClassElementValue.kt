@@ -68,5 +68,9 @@ data class ClassElementValue private constructor(private var _classIndex: Int = 
         internal fun empty(): ClassElementValue {
             return ClassElementValue()
         }
+
+        fun of(classIndex: Int): ClassElementValue {
+            return ClassElementValue(classIndex)
+        }
     }
 }

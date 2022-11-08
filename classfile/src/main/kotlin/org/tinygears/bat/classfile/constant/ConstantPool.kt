@@ -158,6 +158,26 @@ internal class ConstantPool
         return -1
     }
 
+    internal fun getMethodTypeConstantIndex(descriptorIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is MethodTypeConstant && constant.descriptorIndex == descriptorIndex) {
+                return index
+            }
+        }
+        return -1
+    }
+
+    internal fun getMethodHandleConstantIndex(referenceKind: ReferenceKind, referenceIndex: Int): Int {
+        for ((index, constant) in constants.withIndex()) {
+            if (constant is MethodHandleConstant          &&
+                constant.referenceIndex == referenceIndex &&
+                constant.referenceKind  == referenceKind) {
+                return index
+            }
+        }
+        return -1
+    }
+
     @Throws(IOException::class)
     internal fun read(input: ClassDataInput) {
         val entries = input.readUnsignedShort()

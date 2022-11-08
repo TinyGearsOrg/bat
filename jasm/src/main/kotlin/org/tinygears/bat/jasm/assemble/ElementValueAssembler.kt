@@ -16,14 +16,11 @@
 
 package org.tinygears.bat.jasm.assemble
 
-import org.tinygears.bat.classfile.attribute.annotation.ConstElementValue
-import org.tinygears.bat.classfile.attribute.annotation.ElementValue
-import org.tinygears.bat.classfile.attribute.annotation.ElementValueType
-import org.tinygears.bat.classfile.attribute.annotation.EnumElementValue
 import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.jasm.parser.JasmLexer
 import org.tinygears.bat.jasm.parser.JasmParser.*
 import org.antlr.v4.runtime.tree.TerminalNode
+import org.tinygears.bat.classfile.attribute.annotation.*
 
 internal class ElementValueAssembler
     constructor(private val constantPoolEditor: ConstantPoolEditor,
@@ -61,17 +58,6 @@ internal class ElementValueAssembler
             DOUBLE_INFINITY,
             DOUBLE_NAN ->    ConstElementValue.of(ElementValueType.DOUBLE,  constantAssembler.parseBaseValue(ctx))
 
-//            JasmLexer.METHOD_FULL -> {
-//                val (classType, methodName, parameterTypes, returnType) = parseMethodObject(value.text)
-//                val methodIndex = dexEditor.addOrGetMethodIDIndex(classType!!, methodName, parameterTypes, returnType)
-//                EncodedMethodValue.of(methodIndex)
-//            }
-//            JasmLexer.METHOD_PROTO -> {
-//                val (_, _, parameterTypes, returnType) = parseMethodObject(value.text)
-//                val protoIndex = dexEditor.addOrGetProtoIDIndex(parameterTypes, returnType)
-//                EncodedMethodTypeValue.of(protoIndex)
-//            }
-
             ENUM_FULL -> {
                 val (classType, fieldName) = parseEnumObject(value.text)
                 val typeNameIndex  = constantPoolEditor.addOrGetUtf8ConstantIndex(classType!!)
@@ -80,8 +66,8 @@ internal class ElementValueAssembler
                 EnumElementValue.of(typeNameIndex, constNameIndex)
             }
 
-//            JasmLexer.OBJECT_TYPE ->   EncodedTypeValue.of(dexEditor.addOrGetTypeIDIndex(value.text))
-//            JasmLexer.NULL ->          EncodedNullValue
+            OBJECT_TYPE ->   ClassElementValue.of(constantAssembler.parseBaseValue(ctx))
+
             else -> null
         } ?: parserError(ctx, "failure to parse base value")
     }

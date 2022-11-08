@@ -96,9 +96,9 @@ data class MethodHandleConstant private constructor(private var _referenceKind: 
             return MethodHandleConstant()
         }
 
-        fun of(referenceKind: Int, referenceIndex: Int): MethodHandleConstant {
+        fun of(referenceKind: ReferenceKind, referenceIndex: Int): MethodHandleConstant {
             require(referenceIndex >= 1) { "referenceIndex must be a positive number" }
-            return MethodHandleConstant(referenceKind, referenceIndex)
+            return MethodHandleConstant(referenceKind.value, referenceIndex)
         }
     }
 }
@@ -119,8 +119,17 @@ enum class ReferenceKind constructor(val value: Int, val simpleName: String) {
             values().associateBy { it.value }
         }
 
-        fun of(value: Int) : ReferenceKind {
+        fun of(value: Int): ReferenceKind {
             return valueToReferenceKindMap[value] ?: throw IllegalArgumentException("unknown reference kind '$value'")
+        }
+
+        fun ofSimpleName(text: String): ReferenceKind {
+            for (refKind in values()) {
+                if (refKind.simpleName == text) {
+                    return refKind
+                }
+            }
+            error("unexpected refKind '$text'")
         }
     }
 }

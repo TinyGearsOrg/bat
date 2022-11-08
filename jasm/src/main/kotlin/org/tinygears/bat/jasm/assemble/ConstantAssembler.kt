@@ -20,17 +20,13 @@ import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.jasm.parser.JasmParser.*
 import org.tinygears.bat.jasm.parser.JasmParser.SBaseValueContext
 import org.antlr.v4.runtime.tree.TerminalNode
+import org.tinygears.bat.classfile.constant.ReferenceKind
 
 internal class ConstantAssembler constructor(private val constantPoolEditor: ConstantPoolEditor) {
 
     fun parseBaseValue(ctx: SBaseValueContext): Int {
-        // a base value is usually only a single token, only exception: enum fields
-        val value = if (ctx.childCount == 1) {
-            val tn = ctx.getChild(0) as TerminalNode
-            tn.symbol
-        } else {
-            parserError(ctx, "unexpected constant base value")
-        }
+
+        val value = (ctx.getChild(0) as TerminalNode).symbol
 
         return when (value.type) {
             STRING  -> constantPoolEditor.addOrGetUtf8ConstantIndex(parseString(value.text))
@@ -43,14 +39,30 @@ internal class ConstantAssembler constructor(private val constantPoolEditor: Con
 
             BASE_FLOAT,
             FLOAT_INFINITY,
-            FLOAT_NAN -> constantPoolEditor.addOrGetFloatConstantIndex(parseFloat(value.text))
+            FLOAT_NAN   -> constantPoolEditor.addOrGetFloatConstantIndex(parseFloat(value.text))
 
             BASE_DOUBLE,
             DOUBLE_INFINITY,
-            DOUBLE_NAN -> constantPoolEditor.addOrGetDoubleConstantIndex(parseDouble(value.text))
+            DOUBLE_NAN  -> constantPoolEditor.addOrGetDoubleConstantIndex(parseDouble(value.text))
 
             ARRAY_TYPE,
-            CLASS_NAME -> constantPoolEditor.addOrGetClassConstantIndex(value.text)
+            CLASS_NAME  -> constantPoolEditor.addOrGetClassConstantIndex(value.text)
+
+            OBJECT_TYPE -> constantPoolEditor.addOrGetUtf8ConstantIndex(value.text)
+
+            DMETHODTYPE -> {
+                val methodDescriptor = (ctx.getChild(1) as TerminalNode).symbol.text
+                constantPoolEditor.addOrGetMethodTypeConstantIndex(methodDescriptor)
+            }
+
+            DMETHODHANDLE -> {
+                val refKind = ReferenceKind.ofSimpleName((ctx.getChild(1) as TerminalNode).symbol.text)
+
+                val methodObj = (ctx.getChild(2) as TerminalNode).symbol.text
+                val (className, methodName, descriptor) = parseSimpleMethodObject(methodObj)
+
+                constantPoolEditor.addOrGetMethodHandleConstantIndex(refKind, className!!, methodName, descriptor)
+            }
 
             else -> null
         } ?: error("failed to parse constant base value")

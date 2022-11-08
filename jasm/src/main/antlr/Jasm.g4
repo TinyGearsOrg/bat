@@ -161,7 +161,21 @@ ANN_VISIBLE
     | 'runtime'
     ;
 
+REFKIND
+    : 'REF_getField'
+    | 'REF_getStatic'
+    | 'REF_putField'
+    | 'REF_putStatic'
+    | 'REF_invokeVirtual'
+    | 'REF_invokeStatic'
+    | 'REF_invokeSpecial'
+    | 'REF_newInvokeSpecial'
+    | 'REF_invokeInterface'
+    ;
+
 DENUM         : '.enum';
+DMETHODTYPE   : '.methodtype';
+DMETHODHANDLE : '.methodhandle';
 DPARAM        : '.param';
 DRESTARTLOCAL : '.restart local';
 
@@ -181,10 +195,12 @@ sAttribute
     : sSource
     | sSignature
     | sAnnotation
+    | sTypeAnnotation
     | sAnnotationDefault
     | sEnclosingMethod
     | sDeprecated
     | sInnerClass
+    | sBootstrapMethod
     | sThrows
     ;
 
@@ -213,6 +229,24 @@ sAnnotation
 	  ((sAnnotationKeyName '=' sAnnotationValue)* '.end annotation')?
 	;
 
+sTargetInfo: target=ID ('(' sTargetInfoParameter (',' sTargetInfoParameter)* ')')? ;
+
+sTargetInfoParameter: key=ID '=' index=INT ;
+
+sTypePath: ('/' kind=sTypePathKind)+ ;
+
+sTypePathKind
+    : 'array'
+    | 'inner_type'
+    | 'wildcard'
+    | ('type_argument' '(' index=INT ')')
+    ;
+
+sTypeAnnotation
+    : '.typeannotation' visibility=ANN_VISIBLE type=OBJECT_TYPE 'at' targetInfo=sTargetInfo typePath=sTypePath?
+      ((sAnnotationKeyName '=' sAnnotationValue)* '.end typeannotation')?
+    ;
+
 sAnnotationDefault
     : '.annotationdefault' value=sBaseValue ;
 
@@ -224,6 +258,9 @@ sThrows
 
 sInnerClass
     : '.innerclass' sAccList innerClass=CLASS_NAME ('as' name=ID)? ('in' outerClass=CLASS_NAME)? ;
+
+sBootstrapMethod
+    : '.bootstrapmethod' refKind=REFKIND method=METHOD_FULL sBaseValue* '.end bootstrapmethod' ;
 
 sSubannotation
 	: '.subannotation' type=OBJECT_TYPE (sAnnotationKeyName '=' sAnnotationValue )* '.end subannotation' ;
@@ -250,14 +287,14 @@ sBaseValue
 	| BASE_DOUBLE
 	| DOUBLE_INFINITY
 	| DOUBLE_NAN
-	| METHOD_FULL
-	| METHOD_DESCRIPTOR
 	| CLASS_NAME
 	| OBJECT_TYPE
 	| ARRAY_TYPE
 	| PRIMITIVE_TYPE
 	| NULL
 	| DENUM ENUM_FULL
+	| DMETHODTYPE METHOD_DESCRIPTOR
+	| DMETHODHANDLE REFKIND METHOD_FULL
 	;
 
 sArrayValue: '{' sAnnotationValue? (',' sAnnotationValue)* '}' ;
@@ -300,10 +337,10 @@ sInstruction
     | fEndlocal
     ;
 
-fLine      : '.line' line=INT;
+fLine      : '.line' line=INT ;
 fStartlocal: '.local' variable=INT ',' name=STRING (':' descriptor=(PRIMITIVE_TYPE | OBJECT_TYPE | ARRAY_TYPE))? (',' signature=STRING)? ;
-fEndlocal  : '.end local' variable=INT;
-sLabel     : ':' label=ID;
+fEndlocal  : '.end local' variable=INT ;
+sLabel     : ':' label=ID ;
 fCatch     : '.catch' type=CLASS_NAME '{' start=sLabel '..' end=sLabel  '}' handle=sLabel ;
 fCatchall  : '.catchall' '{' start=sLabel '..' end=sLabel  '}' handle=sLabel ;
 

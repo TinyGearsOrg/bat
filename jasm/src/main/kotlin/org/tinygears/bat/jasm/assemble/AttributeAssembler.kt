@@ -16,15 +16,14 @@
 
 package org.tinygears.bat.jasm.assemble
 
-import org.tinygears.bat.classfile.attribute.AttributeType
-import org.tinygears.bat.classfile.attribute.SignatureAttribute
-import org.tinygears.bat.classfile.attribute.SourceFileAttribute
 import org.tinygears.bat.classfile.attribute.annotation.AnnotationDefaultAttribute
 import org.tinygears.bat.classfile.attribute.annotation.RuntimeAnnotationsAttribute
 import org.tinygears.bat.classfile.editor.AttributeEditor
 import org.tinygears.bat.jasm.disassemble.AnnotationVisibility
 import org.tinygears.bat.jasm.parser.JasmParser.*
 import org.antlr.v4.runtime.ParserRuleContext
+import org.tinygears.bat.classfile.attribute.*
+import org.tinygears.bat.classfile.constant.ReferenceKind
 
 internal class AttributeAssembler constructor(private val attributeEditor: AttributeEditor) {
 
@@ -38,6 +37,8 @@ internal class AttributeAssembler constructor(private val attributeEditor: Attri
         when (t.ruleIndex) {
             RULE_sSignature         -> return parseAndAddSignatureAttribute(t as SSignatureContext)
             RULE_sSource            -> return parseAndAddSourceFileAttribute(t as SSourceContext)
+            RULE_sInnerClass        -> return parseAndAddInnerClassesAttribute(t as SInnerClassContext)
+            RULE_sBootstrapMethod   -> return parseAndAddBootstrapMethodAttribute(t as SBootstrapMethodContext)
             RULE_sAnnotation        -> return parseAndAddAnnotationAttribute(t as SAnnotationContext)
             RULE_sAnnotationDefault -> return parseAndAddAnnotationDefaultAttribute(t as SAnnotationDefaultContext)
 
@@ -55,6 +56,41 @@ internal class AttributeAssembler constructor(private val attributeEditor: Attri
         val sourceFile = ctx.src.text.removeSurrounding("\"")
         val attribute = attributeEditor.addOrGetAttribute<SourceFileAttribute>(AttributeType.SOURCE_FILE)
         attribute.setSourceFile(constantPoolEditor, sourceFile)
+    }
+
+    private fun parseAndAddInnerClassesAttribute(ctx: SInnerClassContext) {
+        val attribute = attributeEditor.addOrGetAttribute<InnerClassesAttribute>(AttributeType.INNER_CLASSES)
+
+        val accessFlags     = parseAccessFlags(ctx.sAccList())
+        val innerClassIndex = constantPoolEditor.addOrGetClassConstantIndex(ctx.innerClass.text)
+
+        val innerNameIndex = if (ctx.name != null) {
+            constantPoolEditor.addOrGetUtf8ConstantIndex(ctx.name.text)
+        } else {
+            0
+        }
+
+        val outerClassIndex = if (ctx.outerClass != null) {
+            constantPoolEditor.addOrGetClassConstantIndex(ctx.outerClass.text)
+        } else {
+            0
+        }
+
+        attribute.addEntry(InnerClassEntry.of(innerClassIndex, accessFlags, outerClassIndex, innerNameIndex))
+    }
+
+    private fun parseAndAddBootstrapMethodAttribute(ctx: SBootstrapMethodContext) {
+        val attribute = attributeEditor.addOrGetAttribute<BootstrapMethodsAttribute>(AttributeType.BOOTSTRAP_METHOD)
+
+        val refKind = ReferenceKind.ofSimpleName(ctx.refKind.text)
+        val (className, methodName, descriptor) = parseSimpleMethodObject(ctx.method.text)
+
+        val bootstrapMethodRefIndex = constantPoolEditor.addOrGetMethodHandleConstantIndex(refKind, className!!, methodName, descriptor)
+
+        val arguments = mutableListOf<Int>()
+        ctx.sBaseValue().forEach { arguments.add(constantAssembler.parseBaseValue(it)) }
+
+        attribute.addBootstrapMethod(BootstrapMethod.of(bootstrapMethodRefIndex, arguments.toIntArray()))
     }
 
     private fun parseAndAddAnnotationAttribute(ctx: SAnnotationContext) {

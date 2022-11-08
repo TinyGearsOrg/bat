@@ -54,6 +54,10 @@ data class BootstrapMethodsAttribute
         return bootstrapMethods.iterator()
     }
 
+    fun addBootstrapMethod(method: BootstrapMethod) {
+        bootstrapMethods.add(method)
+    }
+
     override fun readAttributeData(input: ClassDataInput, length: Int) {
         bootstrapMethods = input.readContentList(BootstrapMethod::read)
     }
@@ -151,6 +155,10 @@ data class BootstrapMethod
             val element = BootstrapMethod()
             element.read(input)
             return element
+        }
+
+        fun of(bootstrapMethodRefIndex: Int, arguments: IntArray): BootstrapMethod {
+            return BootstrapMethod(bootstrapMethodRefIndex, arguments)
         }
     }
 }

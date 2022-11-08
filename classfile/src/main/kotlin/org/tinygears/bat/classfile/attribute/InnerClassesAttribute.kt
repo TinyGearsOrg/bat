@@ -58,6 +58,10 @@ data class InnerClassesAttribute
         return innerClasses.iterator()
     }
 
+    fun addEntry(entry: InnerClassEntry) {
+        innerClasses.add(entry)
+    }
+
     override fun readAttributeData(input: ClassDataInput, length: Int) {
         innerClasses = input.readContentList(InnerClassEntry::read)
     }
@@ -157,6 +161,11 @@ data class InnerClassEntry
             val element = InnerClassEntry()
             element.read(input)
             return element
+        }
+
+        fun of(innerClassIndex: Int, accessFlags: Int, outerClassIndex: Int = 0, innerNameIndex: Int = 0): InnerClassEntry {
+            require(innerClassIndex > 0) { "innerClassIndex must be a positive number" }
+            return InnerClassEntry(innerClassIndex, outerClassIndex, innerNameIndex, accessFlags)
         }
     }
 }

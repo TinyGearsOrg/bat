@@ -57,14 +57,6 @@ internal class CodePrinter constructor(private val printer:         IndentingPri
 
     // CodeAttributeVisitor.
 
-    override fun visitRuntimeVisibleTypeAnnotations(classFile: ClassFile, method: Method, code: CodeAttribute, attribute: RuntimeVisibleTypeAnnotationsAttribute) {
-        printer.println(".typeannotation")
-    }
-
-    override fun visitRuntimeInvisibleTypeAnnotations(classFile: ClassFile, method: Method, code: CodeAttribute, attribute: RuntimeInvisibleTypeAnnotationsAttribute) {
-        printer.println(".typeannotation")
-    }
-
     override fun visitLocalVariableTable(classFile: ClassFile, method: Method, code: CodeAttribute, attribute: LocalVariableTableAttribute) {
         for (entry in attribute) {
             addLocalVariable(entry.startPC, entry.length, entry.variableIndex, entry.getName(classFile), entry.getDescriptor(classFile), null)
