@@ -17,14 +17,16 @@
 package org.tinygears.bat.jasm.disassemble
 
 import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.attribute.annotation.*
 import org.tinygears.bat.classfile.attribute.annotation.Annotation
-import org.tinygears.bat.classfile.attribute.annotation.TypeAnnotation
 import org.tinygears.bat.classfile.attribute.annotation.visitor.AnnotationVisitor
 import org.tinygears.bat.io.IndentingPrinter
 import java.util.*
 
 internal class AnnotationPrinter constructor(private val printer:             IndentingPrinter,
                                              private val elementValuePrinter: ElementValuePrinter): AnnotationVisitor {
+
+    private val targetInfoPrinter = TargetInfoPrinter(printer)
 
     var visibility: AnnotationVisibility = AnnotationVisibility.RUNTIME
 
@@ -47,9 +49,27 @@ internal class AnnotationPrinter constructor(private val printer:             In
     }
 
     override fun visitTypeAnnotation(classFile: ClassFile, typeAnnotation: TypeAnnotation) {
-        printer.println(".typeannotation ${visibility.toExternalString()} ${typeAnnotation.getType(classFile)}")
+        printer.print(".typeannotation ${visibility.toExternalString()} ${typeAnnotation.getType(classFile)}")
 
-        // TODO: print target and path
+        printer.print(" at ")
+        typeAnnotation.target.accept(classFile, targetInfoPrinter)
+
+        if (typeAnnotation.path.size > 0) {
+            val pathTransformer: (TypePathEntry) -> CharSequence = { element ->
+                when (element.type) {
+                    TypePathType.INNER_TYPE    -> element.type.externalName
+                    TypePathType.ARRAY         -> element.type.externalName
+                    TypePathType.WILDCARD      -> element.type.externalName
+                    TypePathType.TYPE_ARGUMENT -> "${element.type.externalName}(${element.typeArgumentIndex})"
+                }
+            }
+
+            val location = typeAnnotation.path.joinToString(separator = " / ", prefix = " / ", postfix = "", transform = pathTransformer)
+            printer.print(location)
+        }
+
+        printer.println()
+
         if (typeAnnotation.size > 0) {
             printer.levelUp()
             visitAnyAnnotation(classFile, typeAnnotation)
@@ -79,3 +99,6 @@ enum class AnnotationVisibility {
         }
     }
 }
+
+private val TypePathType.externalName: String
+    get() = this.name.lowercase(Locale.getDefault())

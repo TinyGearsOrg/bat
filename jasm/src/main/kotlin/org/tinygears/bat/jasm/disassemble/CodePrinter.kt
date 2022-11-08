@@ -19,6 +19,8 @@ package org.tinygears.bat.jasm.disassemble
 import org.tinygears.bat.classfile.ClassFile
 import org.tinygears.bat.classfile.Method
 import org.tinygears.bat.classfile.attribute.*
+import org.tinygears.bat.classfile.attribute.annotation.RuntimeInvisibleTypeAnnotationsAttribute
+import org.tinygears.bat.classfile.attribute.annotation.RuntimeVisibleTypeAnnotationsAttribute
 import org.tinygears.bat.classfile.attribute.visitor.CodeAttributeVisitor
 import org.tinygears.bat.classfile.attribute.visitor.MethodAttributeVisitor
 import org.tinygears.bat.io.IndentingPrinter
@@ -54,6 +56,14 @@ internal class CodePrinter constructor(private val printer:         IndentingPri
     }
 
     // CodeAttributeVisitor.
+
+    override fun visitRuntimeVisibleTypeAnnotations(classFile: ClassFile, method: Method, code: CodeAttribute, attribute: RuntimeVisibleTypeAnnotationsAttribute) {
+        printer.println(".typeannotation")
+    }
+
+    override fun visitRuntimeInvisibleTypeAnnotations(classFile: ClassFile, method: Method, code: CodeAttribute, attribute: RuntimeInvisibleTypeAnnotationsAttribute) {
+        printer.println(".typeannotation")
+    }
 
     override fun visitLocalVariableTable(classFile: ClassFile, method: Method, code: CodeAttribute, attribute: LocalVariableTableAttribute) {
         for (entry in attribute) {
