@@ -20,16 +20,24 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.Objects
 
 /**
  * A constant representing a CONSTANT_Utf8_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.7">CONSTANT_Utf8_info Structure</a>
  */
-data class Utf8Constant private constructor(var value: String = ""): Constant() {
+class Utf8Constant private constructor(value: String = ""): Constant() {
 
     override val type: ConstantType
         get() = ConstantType.UTF8
+
+    var value: String = value
+        private set
+
+    fun copyWith(value: String): Utf8Constant {
+        return Utf8Constant(value)
+    }
 
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
@@ -43,6 +51,21 @@ data class Utf8Constant private constructor(var value: String = ""): Constant() 
 
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitUtf8Constant(classFile, index, this);
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Utf8Constant) return false
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(value)
+    }
+
+    override fun toString(): String {
+        return "Utf8Constant[$value]"
     }
 
     companion object {

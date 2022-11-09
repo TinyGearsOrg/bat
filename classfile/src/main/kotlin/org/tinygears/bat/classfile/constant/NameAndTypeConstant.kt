@@ -22,23 +22,24 @@ import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_NameAndType_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.6">CONSTANT_NameAndType_info Structure</a>
  */
-data class NameAndTypeConstant private constructor(private var _nameIndex:       Int = -1,
-                                                   private var _descriptorIndex: Int = -1) : Constant() {
+class NameAndTypeConstant private constructor(nameIndex:       Int = -1,
+                                              descriptorIndex: Int = -1) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.NAME_AND_TYPE
 
-    val nameIndex: Int
-        get() = _nameIndex
+    var nameIndex: Int = nameIndex
+        private set
 
-    val descriptorIndex: Int
-        get() = _descriptorIndex
+    var descriptorIndex: Int = descriptorIndex
+        private set
 
     fun getMemberName(classFile: ClassFile): String {
         return classFile.getString(nameIndex)
@@ -48,10 +49,14 @@ data class NameAndTypeConstant private constructor(private var _nameIndex:      
         return classFile.getString(descriptorIndex)
     }
 
+    fun copyWith(nameIndex: Int = this.nameIndex, descriptorIndex: Int = this.descriptorIndex): NameAndTypeConstant {
+        return NameAndTypeConstant(nameIndex, descriptorIndex)
+    }
+
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _nameIndex       = input.readUnsignedShort()
-        _descriptorIndex = input.readUnsignedShort()
+        nameIndex       = input.readUnsignedShort()
+        descriptorIndex = input.readUnsignedShort()
     }
 
     @Throws(IOException::class)
@@ -69,8 +74,24 @@ data class NameAndTypeConstant private constructor(private var _nameIndex:      
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
-        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::_nameIndex))
-        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::_descriptorIndex))
+        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::nameIndex))
+        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::descriptorIndex))
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is NameAndTypeConstant) return false
+
+        return nameIndex       == other.nameIndex &&
+               descriptorIndex == other.descriptorIndex
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(nameIndex, descriptorIndex)
+    }
+
+    override fun toString(): String {
+        return "NameAndTypeConstant[#$nameIndex,#$descriptorIndex]"
     }
 
     companion object {

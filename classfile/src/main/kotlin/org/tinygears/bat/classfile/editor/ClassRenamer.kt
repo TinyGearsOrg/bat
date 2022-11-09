@@ -32,6 +32,7 @@ import org.tinygears.bat.classfile.attribute.preverification.*
 import org.tinygears.bat.classfile.attribute.preverification.visitor.StackMapFrameVisitor
 import org.tinygears.bat.classfile.attribute.visitor.AttributeVisitor
 import org.tinygears.bat.classfile.constant.*
+import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.classfile.constant.editor.ConstantPoolShrinker
 import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.classfile.instruction.ConstantInstruction
@@ -62,6 +63,8 @@ class ClassRenamer constructor(private val renamer: Renamer): ClassFileVisitor {
     private val constantPoolShrinker = ConstantPoolShrinker()
 
     override fun visitClassFile(classFile: ClassFile) {
+        val constantPoolEditor = ConstantPoolEditor.of(classFile)
+
         // we fist collect all used constants that might contain a classname
         val collector = ConstantCollector()
         collector.visitClassFile(classFile)
@@ -70,7 +73,9 @@ class ClassRenamer constructor(private val renamer: Renamer): ClassFileVisitor {
 
         // now process all constants containing a classname and replace
         // the names using the given Renamer.
-        for ((elementType, constant) in collector.collectedConstants.values) {
+        for ((index, mapValue) in collector.collectedConstants) {
+            val (elementType, constant) = mapValue
+
             val newValue = when (elementType) {
                 ElementType.CLASSNAME -> {
                     renamer.renameClassInfo(constant.value.asInternalClassName()).toInternalClassName()
@@ -105,7 +110,7 @@ class ClassRenamer constructor(private val renamer: Renamer): ClassFileVisitor {
 
             if (newValue != constant.value) {
                 replacedValues++
-                constant.value = newValue
+                constantPoolEditor.replaceConstant(index, constant.copyWith(newValue))
             }
         }
 

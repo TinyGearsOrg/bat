@@ -20,25 +20,30 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_Long_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.5">CONSTANT_Long_info Structure</a>
  */
-data class LongConstant private constructor(private var _value: Long = 0) : Constant() {
+class LongConstant private constructor(value: Long = 0) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.LONG
 
-    val value: Long
-        get() = _value
+    var value: Long = value
+        private set
+
+    fun copyWith(value: Long): LongConstant {
+        return LongConstant(value)
+    }
 
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
         val highBytes = input.readUnsignedInt()
         val lowBytes  = input.readUnsignedInt()
-        _value = (highBytes shl 32) + lowBytes
+        value = (highBytes shl 32) + lowBytes
     }
 
     @Throws(IOException::class)
@@ -51,6 +56,21 @@ data class LongConstant private constructor(private var _value: Long = 0) : Cons
 
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitLongConstant(classFile, index, this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is LongConstant) return false
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(value)
+    }
+
+    override fun toString(): String {
+        return "LongConstant[$value]"
     }
 
     companion object {

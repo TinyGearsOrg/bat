@@ -22,27 +22,32 @@ import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_MethodType_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.9">CONSTANT_MethodType_info Structure</a>
  */
-data class MethodTypeConstant private constructor(private var _descriptorIndex: Int = -1) : Constant() {
+class MethodTypeConstant private constructor(descriptorIndex: Int = -1) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.METHOD_TYPE
 
-    val descriptorIndex: Int
-        get() = _descriptorIndex
+    var descriptorIndex: Int = descriptorIndex
+        private set
 
     fun getDescriptor(classFile: ClassFile): String {
         return classFile.getString(descriptorIndex)
     }
 
+    fun copyWith(descriptorIndex: Int = this.descriptorIndex): MethodTypeConstant {
+        return MethodTypeConstant(descriptorIndex)
+    }
+
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _descriptorIndex = input.readUnsignedShort()
+        descriptorIndex = input.readUnsignedShort()
     }
 
     @Throws(IOException::class)
@@ -59,7 +64,22 @@ data class MethodTypeConstant private constructor(private var _descriptorIndex: 
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
-        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::_descriptorIndex))
+        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::descriptorIndex))
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is MethodTypeConstant) return false
+
+        return descriptorIndex == other.descriptorIndex
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(descriptorIndex)
+    }
+
+    override fun toString(): String {
+        return "MethodTypeConstant[#$descriptorIndex]"
     }
 
     companion object {

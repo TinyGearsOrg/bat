@@ -22,27 +22,32 @@ import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_Module_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.11">CONSTANT_Module_info Structure</a>
  */
-data class ModuleConstant private constructor(private var _nameIndex: Int = -1): Constant() {
+class ModuleConstant private constructor(nameIndex: Int = -1): Constant() {
 
     override val type: ConstantType
         get() = ConstantType.MODULE
 
-    val nameIndex: Int
-        get() = _nameIndex
+    var nameIndex: Int = nameIndex
+        private set
 
     fun getModuleName(classFile: ClassFile): String {
         return classFile.getString(nameIndex)
     }
 
+    fun copyWith(nameIndex: Int): ModuleConstant {
+        return ModuleConstant(nameIndex)
+    }
+
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _nameIndex = input.readUnsignedShort()
+        nameIndex = input.readUnsignedShort()
     }
 
     @Throws(IOException::class)
@@ -55,7 +60,22 @@ data class ModuleConstant private constructor(private var _nameIndex: Int = -1):
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
-        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::_nameIndex))
+        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::nameIndex))
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ModuleConstant) return false
+
+        return nameIndex == other.nameIndex
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(nameIndex)
+    }
+
+    override fun toString(): String {
+        return "ModuleConstant[#$nameIndex]"
     }
 
     companion object {

@@ -22,19 +22,20 @@ import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * An abstract base class for constants referencing a bootstrap method,
  * i.e. Dynamic or InvokeDynamic.
  */
-abstract class BootstrapRefConstant(protected open var _bootstrapMethodAttrIndex: Int = -1,
-                                    protected open var _nameAndTypeIndex:         Int = -1): Constant() {
+abstract class BootstrapRefConstant(bootstrapMethodAttrIndex: Int = -1,
+                                    nameAndTypeIndex:         Int = -1): Constant() {
 
-    val bootstrapMethodAttrIndex: Int
-        get() = _bootstrapMethodAttrIndex
+    var bootstrapMethodAttrIndex: Int = bootstrapMethodAttrIndex
+        private set
 
-    val nameAndTypeIndex: Int
-        get() = _nameAndTypeIndex
+    var nameAndTypeIndex: Int = nameAndTypeIndex
+        private set
 
     fun getNameAndType(classFile: ClassFile): NameAndTypeConstant {
         return classFile.getNameAndType(nameAndTypeIndex)
@@ -50,14 +51,14 @@ abstract class BootstrapRefConstant(protected open var _bootstrapMethodAttrIndex
 
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _bootstrapMethodAttrIndex = input.readUnsignedShort()
-        _nameAndTypeIndex         = input.readUnsignedShort()
+        bootstrapMethodAttrIndex = input.readUnsignedShort()
+        nameAndTypeIndex         = input.readUnsignedShort()
     }
 
     @Throws(IOException::class)
     override fun writeConstantInfo(output: ClassDataOutput) {
-        output.writeShort(_bootstrapMethodAttrIndex)
-        output.writeShort(_nameAndTypeIndex)
+        output.writeShort(bootstrapMethodAttrIndex)
+        output.writeShort(nameAndTypeIndex)
     }
 
     fun nameAndTypeConstantAccept(classFile: ClassFile, visitor: ConstantVisitor) {
@@ -65,6 +66,20 @@ abstract class BootstrapRefConstant(protected open var _bootstrapMethodAttrIndex
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
-        visitor.visitNameAndTypeConstant(classFile, this, PropertyAccessor(::_nameAndTypeIndex))
+        visitor.visitNameAndTypeConstant(classFile, this, PropertyAccessor(::nameAndTypeIndex))
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as BootstrapRefConstant
+
+        return bootstrapMethodAttrIndex == other.bootstrapMethodAttrIndex &&
+               nameAndTypeIndex         == other.nameAndTypeIndex
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(bootstrapMethodAttrIndex, nameAndTypeIndex)
     }
 }

@@ -20,23 +20,28 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_Float_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.4">CONSTANT_Float_info Structure</a>
  */
-data class FloatConstant private constructor(private var _value: Float = 0.0f) : Constant() {
+class FloatConstant private constructor(value: Float = 0.0f) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.FLOAT
 
-    val value: Float
-        get() = _value
+    var value: Float = value
+        private set
+
+    fun copyWith(value: Float): FloatConstant {
+        return FloatConstant(value)
+    }
 
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _value = Float.fromBits(input.readInt())
+        value = Float.fromBits(input.readInt())
     }
 
     @Throws(IOException::class)
@@ -46,6 +51,21 @@ data class FloatConstant private constructor(private var _value: Float = 0.0f) :
 
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitFloatConstant(classFile, index, this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FloatConstant) return false
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(value)
+    }
+
+    override fun toString(): String {
+        return "FloatConstant[$value]"
     }
 
     companion object {

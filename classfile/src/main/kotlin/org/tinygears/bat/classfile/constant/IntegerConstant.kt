@@ -20,23 +20,28 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_Integer_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.4">CONSTANT_Integer_info Structure</a>
  */
-data class IntegerConstant private constructor(private var _value: Int = 0) : Constant() {
+class IntegerConstant private constructor(value: Int = 0) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.INTEGER
 
-    val value: Int
-        get() = _value
+    var value: Int = value
+        private set
+
+    fun copyWith(value: Int): IntegerConstant {
+        return IntegerConstant(value)
+    }
 
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _value = input.readInt()
+        value = input.readInt()
     }
 
     @Throws(IOException::class)
@@ -46,6 +51,21 @@ data class IntegerConstant private constructor(private var _value: Int = 0) : Co
 
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitIntegerConstant(classFile, index, this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is IntegerConstant) return false
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(value)
+    }
+
+    override fun toString(): String {
+        return "IntegerConstant[$value]"
     }
 
     companion object {

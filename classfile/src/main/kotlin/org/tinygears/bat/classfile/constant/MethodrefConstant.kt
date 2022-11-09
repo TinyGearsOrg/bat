@@ -23,14 +23,22 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.2">CONSTANT_MethodRef_info Structure</a>
  */
-data class MethodrefConstant private constructor(override var _classIndex:       Int = -1,
-                                                 override var _nameAndTypeIndex: Int = -1) : RefConstant(_classIndex, _nameAndTypeIndex) {
+class MethodrefConstant private constructor(classIndex:       Int = -1,
+                                            nameAndTypeIndex: Int = -1) : RefConstant(classIndex, nameAndTypeIndex) {
 
     override val type: ConstantType
         get() = ConstantType.METHOD_REF
 
+    fun copyWith(classIndex: Int = this.classIndex, nameAndTypeIndex: Int = this.nameAndTypeIndex): MethodrefConstant {
+        return MethodrefConstant(classIndex, nameAndTypeIndex)
+    }
+
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitMethodRefConstant(classFile, index, this)
+    }
+
+    override fun toString(): String {
+        return "MethodrefConstant[#$classIndex,#$nameAndTypeIndex]"
     }
 
     companion object {

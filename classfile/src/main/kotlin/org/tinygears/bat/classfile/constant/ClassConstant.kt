@@ -24,27 +24,32 @@ import org.tinygears.bat.classfile.io.ClassDataOutput
 import org.tinygears.bat.util.JvmClassName
 import org.tinygears.bat.util.asInternalClassName
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_Class_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.1">CONSTANT_Class_info Structure</a>
  */
-data class ClassConstant private constructor(private var _nameIndex: Int = -1) : Constant() {
+class ClassConstant private constructor(nameIndex: Int = -1) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.CLASS
 
-    val nameIndex: Int
-        get() = _nameIndex
+    var nameIndex: Int = nameIndex
+        private set
 
     fun getClassName(classFile: ClassFile): JvmClassName {
         return classFile.getString(nameIndex).asInternalClassName()
     }
 
+    fun copyWith(nameIndex: Int): ClassConstant {
+        return ClassConstant(nameIndex)
+    }
+
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _nameIndex = input.readUnsignedShort()
+        nameIndex = input.readUnsignedShort()
     }
 
     @Throws(IOException::class)
@@ -61,7 +66,22 @@ data class ClassConstant private constructor(private var _nameIndex: Int = -1) :
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
-        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::_nameIndex))
+        visitor.visitUtf8Constant(classFile, this, PropertyAccessor(::nameIndex))
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ClassConstant) return false
+
+        return nameIndex == other.nameIndex
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(nameIndex)
+    }
+
+    override fun toString(): String {
+        return "ClassConstant[#$nameIndex]"
     }
 
     companion object {

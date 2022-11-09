@@ -24,12 +24,15 @@ import org.tinygears.bat.util.mutableListOfCapacity
 import java.io.IOException
 
 internal class ConstantPool
-    private constructor(private var constants: MutableList<Constant?> = mutableListOfCapacity(1)) {
+    private constructor(private var constants: MutableList<Constant?>    = mutableListOfCapacity(1),
+                        private var map:       MutableMap<Constant, Int> = mutableMapOf()) {
 
     init {
         if (constants.isEmpty()) {
             constants.add(null)
         }
+        
+        constants.filterNotNull().forEachIndexed { index, constant -> map[constant] = index }
     }
 
     internal val size: Int
@@ -40,142 +43,33 @@ internal class ConstantPool
         return constants[index]!!
     }
 
+    internal operator fun set(index: Int, constant: Constant) {
+        val oldConstant = constants[index]
+
+        if (oldConstant != null) {
+            require(oldConstant.javaClass == constant.javaClass) { "replacing constant of different type $constant != $oldConstant" }
+            map.remove(oldConstant)
+        }
+
+        constants[index] = constant
+        map[constant]    = index
+    }
+
     internal fun addConstant(constant: Constant): Int {
         constants.add(constant)
         val constantIndex = constants.lastIndex
+
         if (constant.constantPoolSize > 1) {
             constants.add(null)
         }
+
+        map[constant] = constantIndex
+
         return constantIndex
     }
 
-    internal fun getUtf8ConstantIndex(string: String): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is Utf8Constant && constant.value == string) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getClassConstantIndex(nameIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is ClassConstant && constant.nameIndex == nameIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getNameAndTypeConstantIndex(nameIndex: Int, descriptorIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is NameAndTypeConstant       &&
-                constant.nameIndex       == nameIndex &&
-                constant.descriptorIndex == descriptorIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getFieldRefConstantIndex(classIndex: Int, nameAndTypeIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is FieldrefConstant            &&
-                constant.classIndex       == classIndex &&
-                constant.nameAndTypeIndex == nameAndTypeIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getMethodRefConstantIndex(classIndex: Int, nameAndTypeIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is MethodrefConstant           &&
-                constant.classIndex       == classIndex &&
-                constant.nameAndTypeIndex == nameAndTypeIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getInterfaceMethodRefConstantIndex(classIndex: Int, nameAndTypeIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is InterfaceMethodrefConstant  &&
-                constant.classIndex       == classIndex &&
-                constant.nameAndTypeIndex == nameAndTypeIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getInvokeDynamicConstantIndex(bootstrapMethodAttrIndex: Int, nameAndTypeIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is InvokeDynamicConstant                             &&
-                constant.bootstrapMethodAttrIndex == bootstrapMethodAttrIndex &&
-                constant.nameAndTypeIndex == nameAndTypeIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getIntegerConstantIndex(value: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is IntegerConstant && constant.value == value) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getLongConstantIndex(value: Long): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is LongConstant && constant.value == value) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getFloatConstantIndex(value: Float): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is FloatConstant && constant.value == value) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getDoubleConstantIndex(value: Double): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is DoubleConstant && constant.value == value) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getMethodTypeConstantIndex(descriptorIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is MethodTypeConstant && constant.descriptorIndex == descriptorIndex) {
-                return index
-            }
-        }
-        return -1
-    }
-
-    internal fun getMethodHandleConstantIndex(referenceKind: ReferenceKind, referenceIndex: Int): Int {
-        for ((index, constant) in constants.withIndex()) {
-            if (constant is MethodHandleConstant          &&
-                constant.referenceIndex == referenceIndex &&
-                constant.referenceKind  == referenceKind) {
-                return index
-            }
-        }
-        return -1
+    internal fun getConstantIndex(constant: Constant): Int {
+        return map[constant] ?: -1
     }
 
     @Throws(IOException::class)
@@ -223,6 +117,10 @@ internal class ConstantPool
 
     fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
         constants.forEach { constant -> constant?.referencedConstantsAccept(classFile, visitor) }
+    }
+
+    override fun toString(): String {
+        return "ConstantPool[$size constants]"
     }
 
     companion object {

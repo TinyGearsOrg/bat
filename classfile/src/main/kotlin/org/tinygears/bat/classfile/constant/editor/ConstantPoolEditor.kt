@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.constant.editor
 
 import org.tinygears.bat.classfile.ClassFile
@@ -22,46 +21,55 @@ import org.tinygears.bat.classfile.constant.ConstantPool
 
 class ConstantPoolEditor private constructor(private val constantPool: ConstantPool) {
 
+    fun replaceConstant(index: Int, newConstant: Constant) {
+        constantPool[index] = newConstant
+    }
+
     fun addOrGetUtf8ConstantIndex(string: String): Int {
-        val index = constantPool.getUtf8ConstantIndex(string)
+        val constant = Utf8Constant.of(string)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(Utf8Constant.of(string))
+            constantPool.addConstant(constant)
         } else {
             index
         }
     }
 
     fun addOrGetIntegerConstantIndex(value: Int): Int {
-        val index = constantPool.getIntegerConstantIndex(value)
+        val constant = IntegerConstant.of(value)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(IntegerConstant.of(value))
+            constantPool.addConstant(constant)
         } else {
             index
         }
     }
 
     fun addOrGetLongConstantIndex(value: Long): Int {
-        val index = constantPool.getLongConstantIndex(value)
+        val constant = LongConstant.of(value)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(LongConstant.of(value))
+            constantPool.addConstant(constant)
         } else {
             index
         }
     }
 
     fun addOrGetFloatConstantIndex(value: Float): Int {
-        val index = constantPool.getFloatConstantIndex(value)
+        val constant = FloatConstant.of(value)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(FloatConstant.of(value))
+            constantPool.addConstant(constant)
         } else {
             index
         }
     }
 
     fun addOrGetDoubleConstantIndex(value: Double): Int {
-        val index = constantPool.getDoubleConstantIndex(value)
+        val constant = DoubleConstant.of(value)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(DoubleConstant.of(value))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -69,9 +77,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
 
     fun addOrGetClassConstantIndex(className: String): Int {
         val nameIndex = addOrGetUtf8ConstantIndex(className)
-        val index = constantPool.getClassConstantIndex(nameIndex)
+        val constant  = ClassConstant.of(nameIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(ClassConstant.of(nameIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -80,10 +89,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
     fun addOrGetNameAndTypeConstantIndex(name: String, descriptor: String): Int {
         val nameIndex       = addOrGetUtf8ConstantIndex(name)
         val descriptorIndex = addOrGetUtf8ConstantIndex(descriptor)
-
-        val index = constantPool.getNameAndTypeConstantIndex(nameIndex, descriptorIndex)
+        val constant        = NameAndTypeConstant.of(nameIndex, descriptorIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(NameAndTypeConstant.of(nameIndex, descriptorIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -92,10 +101,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
     fun addOrGetFieldRefConstantIndex(className: String, fieldName: String, descriptor: String): Int {
         val classIndex       = addOrGetClassConstantIndex(className)
         val nameAndTypeIndex = addOrGetNameAndTypeConstantIndex(fieldName, descriptor)
-
-        val index = constantPool.getFieldRefConstantIndex(classIndex, nameAndTypeIndex)
+        val constant         = FieldrefConstant.of(classIndex, nameAndTypeIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(FieldrefConstant.of(classIndex, nameAndTypeIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -104,10 +113,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
     fun addOrGetMethodRefConstantIndex(className: String, methodName: String, descriptor: String): Int {
         val classIndex       = addOrGetClassConstantIndex(className)
         val nameAndTypeIndex = addOrGetNameAndTypeConstantIndex(methodName, descriptor)
-
-        val index = constantPool.getMethodRefConstantIndex(classIndex, nameAndTypeIndex)
+        val constant         = MethodrefConstant.of(classIndex, nameAndTypeIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(MethodrefConstant.of(classIndex, nameAndTypeIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -116,10 +125,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
     fun addOrGetInterfaceMethodRefConstantIndex(className: String, methodName: String, descriptor: String): Int {
         val classIndex       = addOrGetClassConstantIndex(className)
         val nameAndTypeIndex = addOrGetNameAndTypeConstantIndex(methodName, descriptor)
-
-        val index = constantPool.getInterfaceMethodRefConstantIndex(classIndex, nameAndTypeIndex)
+        val constant         = InterfaceMethodrefConstant.of(classIndex, nameAndTypeIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(InterfaceMethodrefConstant.of(classIndex, nameAndTypeIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -127,10 +136,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
 
     fun addOrGetInvokeDynamicConstantIndex(bootstrapMethodAttrIndex: Int, methodName: String, descriptor: String): Int {
         val nameAndTypeIndex = addOrGetNameAndTypeConstantIndex(methodName, descriptor)
-
-        val index = constantPool.getInvokeDynamicConstantIndex(bootstrapMethodAttrIndex, nameAndTypeIndex)
+        val constant         = InvokeDynamicConstant.of(bootstrapMethodAttrIndex, nameAndTypeIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(InvokeDynamicConstant.of(bootstrapMethodAttrIndex, nameAndTypeIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -138,10 +147,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
 
     fun addOrGetMethodTypeConstantIndex(descriptor: String): Int {
         val descriptorIndex = addOrGetUtf8ConstantIndex(descriptor)
-
-        val index = constantPool.getMethodTypeConstantIndex(descriptorIndex)
+        val constant        = MethodTypeConstant.of(descriptorIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(MethodTypeConstant.of(descriptorIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }
@@ -149,10 +158,10 @@ class ConstantPoolEditor private constructor(private val constantPool: ConstantP
 
     fun addOrGetMethodHandleConstantIndex(referenceKind: ReferenceKind, className: String, methodName: String, descriptor: String): Int {
         val methodRefIndex = addOrGetMethodRefConstantIndex(className, methodName, descriptor)
-
-        val index = constantPool.getMethodHandleConstantIndex(referenceKind, methodRefIndex)
+        val constant       = MethodHandleConstant.of(referenceKind, methodRefIndex)
+        val index = constantPool.getConstantIndex(constant)
         return if (index == -1) {
-            constantPool.addConstant(MethodHandleConstant.of(referenceKind, methodRefIndex))
+            constantPool.addConstant(constant)
         } else {
             index
         }

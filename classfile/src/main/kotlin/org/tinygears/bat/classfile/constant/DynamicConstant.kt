@@ -23,15 +23,22 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.10">CONSTANT_Dynamic_info Structure</a>
  */
-data class DynamicConstant private constructor(override var _bootstrapMethodAttrIndex: Int = -1,
-                                               override var _nameAndTypeIndex:         Int = -1)
-    : BootstrapRefConstant(_bootstrapMethodAttrIndex, _nameAndTypeIndex) {
+class DynamicConstant private constructor(bootstrapMethodAttrIndex: Int = -1,
+                                          nameAndTypeIndex:         Int = -1) : BootstrapRefConstant(bootstrapMethodAttrIndex, nameAndTypeIndex) {
 
     override val type: ConstantType
         get() = ConstantType.DYNAMIC
 
+    fun copyWith(bootstrapMethodAttrIndex: Int = this.bootstrapMethodAttrIndex, nameAndTypeIndex: Int = this.nameAndTypeIndex): DynamicConstant {
+        return DynamicConstant(bootstrapMethodAttrIndex, nameAndTypeIndex)
+    }
+
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitDynamicConstant(classFile, index, this)
+    }
+
+    override fun toString(): String {
+        return "DynamicConstant[#$bootstrapMethodAttrIndex,#$nameAndTypeIndex]"
     }
 
     companion object {

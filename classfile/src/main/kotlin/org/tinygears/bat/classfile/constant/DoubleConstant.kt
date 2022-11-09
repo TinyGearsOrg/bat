@@ -20,26 +20,31 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_Double_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.5">CONSTANT_Double_info Structure</a>
  */
-data class DoubleConstant private constructor(var _value: Double = 0.0) : Constant() {
+class DoubleConstant private constructor(value: Double = 0.0) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.DOUBLE
 
-    val value: Double
-        get() = _value
+    var value: Double = value
+        private set
 
+    fun copyWith(value: Double): DoubleConstant {
+        return DoubleConstant(value)
+    }
+    
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
         val highBytes = input.readUnsignedInt()
         val lowBytes  = input.readUnsignedInt()
         val bits = (highBytes shl 32) + lowBytes
-        _value = Double.fromBits(bits)
+        value = Double.fromBits(bits)
     }
 
     @Throws(IOException::class)
@@ -53,6 +58,21 @@ data class DoubleConstant private constructor(var _value: Double = 0.0) : Consta
 
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitDoubleConstant(classFile, index, this)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is DoubleConstant) return false
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(value)
+    }
+
+    override fun toString(): String {
+        return "DoubleConstant[$value]"
     }
 
     companion object {

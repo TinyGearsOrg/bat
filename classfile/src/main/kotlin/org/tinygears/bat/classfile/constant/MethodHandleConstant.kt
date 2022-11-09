@@ -23,38 +23,43 @@ import org.tinygears.bat.classfile.constant.visitor.ReferencedConstantVisitor
 import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import java.io.IOException
+import java.util.*
 
 /**
  * A constant representing a CONSTANT_MethodHandle_info structure in a class file.
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.8">CONSTANT_MethodHandle_info Structure</a>
  */
-data class MethodHandleConstant private constructor(private var _referenceKind:  Int =  0,
-                                                    private var _referenceIndex: Int = -1) : Constant() {
+class MethodHandleConstant private constructor(referenceKind:  ReferenceKind = GET_FIELD,
+                                               referenceIndex: Int           = -1) : Constant() {
 
     override val type: ConstantType
         get() = ConstantType.METHOD_HANDLE
 
-    val referenceKind: ReferenceKind
-        get() = ReferenceKind.of(_referenceKind)
+    var referenceKind: ReferenceKind = referenceKind
+        private set
 
-    val referenceIndex: Int
-        get() = _referenceIndex
+    var referenceIndex: Int = referenceIndex
+        private set
 
     fun getReferencedFieldOrMethod(classFile: ClassFile): RefConstant {
         return classFile.getRefConstant(referenceIndex)
     }
 
+    fun copyWith(referenceKind: ReferenceKind = this.referenceKind, referenceIndex: Int = this.referenceIndex): MethodHandleConstant {
+        return MethodHandleConstant(referenceKind, referenceIndex)
+    }
+
     @Throws(IOException::class)
     override fun readConstantInfo(input: ClassDataInput) {
-        _referenceKind  = input.readUnsignedByte()
-        _referenceIndex = input.readUnsignedShort()
+        referenceKind  = ReferenceKind.of(input.readUnsignedByte())
+        referenceIndex = input.readUnsignedShort()
     }
 
     @Throws(IOException::class)
     override fun writeConstantInfo(output: ClassDataOutput) {
-        output.writeByte(_referenceKind)
-        output.writeShort(_referenceIndex)
+        output.writeByte(referenceKind.value)
+        output.writeShort(referenceIndex)
     }
 
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
@@ -66,7 +71,7 @@ data class MethodHandleConstant private constructor(private var _referenceKind: 
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
-        val propertyAccessor = PropertyAccessor(::_referenceIndex)
+        val propertyAccessor = PropertyAccessor(::referenceIndex)
 
         when (referenceKind) {
             GET_FIELD,
@@ -91,6 +96,22 @@ data class MethodHandleConstant private constructor(private var _referenceKind: 
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is MethodHandleConstant) return false
+
+        return referenceKind  == other.referenceKind &&
+               referenceIndex == other.referenceIndex
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(referenceKind, referenceIndex)
+    }
+
+    override fun toString(): String {
+        return "MethodHandleConstant[$referenceKind,#$referenceIndex]"
+    }
+
     companion object {
         internal fun empty(): MethodHandleConstant {
             return MethodHandleConstant()
@@ -98,7 +119,7 @@ data class MethodHandleConstant private constructor(private var _referenceKind: 
 
         fun of(referenceKind: ReferenceKind, referenceIndex: Int): MethodHandleConstant {
             require(referenceIndex >= 1) { "referenceIndex must be a positive number" }
-            return MethodHandleConstant(referenceKind.value, referenceIndex)
+            return MethodHandleConstant(referenceKind, referenceIndex)
         }
     }
 }

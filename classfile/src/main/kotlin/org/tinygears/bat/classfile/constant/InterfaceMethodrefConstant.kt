@@ -23,14 +23,22 @@ import org.tinygears.bat.classfile.constant.visitor.ConstantVisitor
  *
  * @see <a href="https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.4.2">CONSTANT_InterfaceMethodref_info Structure</a>
  */
-data class InterfaceMethodrefConstant private constructor(override var _classIndex:       Int = -1,
-                                                          override var _nameAndTypeIndex: Int = -1) : RefConstant(_classIndex, _nameAndTypeIndex) {
+class InterfaceMethodrefConstant private constructor(classIndex:       Int = -1,
+                                                     nameAndTypeIndex: Int = -1) : RefConstant(classIndex, nameAndTypeIndex) {
 
     override val type: ConstantType
         get() = ConstantType.INTERFACE_METHOD_REF
 
+    fun copyWith(classIndex: Int = this.classIndex, nameAndTypeIndex: Int = this.nameAndTypeIndex): InterfaceMethodrefConstant {
+        return InterfaceMethodrefConstant(classIndex, nameAndTypeIndex)
+    }
+
     override fun accept(classFile: ClassFile, index: Int, visitor: ConstantVisitor) {
         visitor.visitInterfaceMethodRefConstant(classFile, index, this)
+    }
+
+    override fun toString(): String {
+        return "InterfaceMethodrefConstant[#$classIndex,#$nameAndTypeIndex]"
     }
 
     companion object {
