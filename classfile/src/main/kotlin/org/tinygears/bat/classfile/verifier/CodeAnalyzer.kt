@@ -172,9 +172,27 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             TODO("implement ${instruction.opCode.mnemonic}")
         }
 
-        override fun visitNopInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: NopInstruction) {
+        override fun visitBasicInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: BasicInstruction) {
             val frameBefore = framesBefore[offset]
-            framesAfter[offset] = frameBefore!!.copy()
+            val frameAfter  = frameBefore!!.copy()
+
+            when (instruction.opCode) {
+                NOP         -> {}
+
+                ACONST_NULL -> frameAfter.push(NullReference)
+
+                ATHROW      -> {
+                    frameAfter.clearStack()
+                    frameAfter.push(frameBefore.peek())
+                }
+
+                MONITORENTER,
+                MONITOREXIT -> frameAfter.pop()
+
+                else -> error("unexpected opcode ${instruction.opCode}")
+            }
+
+            framesAfter[offset] = frameAfter
         }
 
         override fun visitStackInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: StackInstruction) {
@@ -728,37 +746,6 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
             framesAfter[offset] = frameAfter
         }
-
-        override fun visitMonitorInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: MonitorInstruction) {
-            val frameBefore = framesBefore[offset]
-            val frameAfter  = frameBefore!!.copy()
-
-            when (instruction.opCode) {
-                MONITORENTER,
-                MONITOREXIT -> frameAfter.pop()
-
-                else -> error("unexpected opcode ${instruction.opCode}")
-            }
-
-            framesAfter[offset] = frameAfter
-        }
-
-        override fun visitNullReferenceInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: NullReferenceInstruction) {
-            val frameBefore = framesBefore[offset]
-            val frameAfter  = frameBefore!!.copy()
-            frameAfter.push(NullReference)
-            framesAfter[offset] = frameAfter
-        }
-
-        override fun visitExceptionInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ExceptionInstruction) {
-            val frameBefore = framesBefore[offset]
-            val frameAfter  = frameBefore!!.copy()
-
-            frameAfter.clearStack()
-            frameAfter.push(frameBefore.peek())
-
-            framesAfter[offset] = frameAfter
-        }
     }
 
     inner class BlockAnalyser: InstructionVisitor {
@@ -799,8 +786,10 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             }
         }
 
-        override fun visitExceptionInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ExceptionInstruction) {
-            setStatusFlag(offset, BLOCK_EXIT)
+        override fun visitBasicInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: BasicInstruction) {
+            if (instruction.opCode == ATHROW) {
+                setStatusFlag(offset, BLOCK_EXIT)
+            }
         }
 
         override fun visitReturnInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ReturnInstruction) {

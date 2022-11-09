@@ -88,17 +88,14 @@ internal class CodeAssembler constructor(private val method:      Method,
                         null
                     }
 
+                    RULE_fBasicInstructions               -> instructionAssembler.parseBasicInstructions(t as FBasicInstructionsContext)
                     RULE_fArithmeticInstructions          -> instructionAssembler.parseArithmeticInstructions(t as FArithmeticInstructionsContext)
                     RULE_fConversionInstructions          -> instructionAssembler.parseConversionInstructions(t as FConversionInstructionsContext)
                     RULE_fStackInstructions               -> instructionAssembler.parseStackInstructions(t as FStackInstructionsContext)
                     RULE_fImplicitVariableInstructions    -> instructionAssembler.parseImplicitVariableInstructions(t as FImplicitVariableInstructionsContext)
                     RULE_fExplicitVariableInstructions    -> instructionAssembler.parseExplicitVariableInstructions(t as FExplicitVariableInstructionsContext)
                     RULE_fArrayInstructions               -> instructionAssembler.parseArrayInstructions(t as FArrayInstructionsContext)
-                    RULE_fExceptionInstructions           -> instructionAssembler.parseExceptionInstructions(t as FExceptionInstructionsContext)
-                    RULE_fNullReferenceInstructions       -> instructionAssembler.parseNullReferenceInstructions(t as FNullReferenceInstructionsContext)
-                    RULE_fNopInstruction                  -> instructionAssembler.parseNopInstructions(t as FNopInstructionContext)
                     RULE_fReturnInstructions              -> instructionAssembler.parseReturnInstructions(t as FReturnInstructionsContext)
-                    RULE_fMonitorInstructions             -> instructionAssembler.parseMonitorInstructions(t as FMonitorInstructionsContext)
                     RULE_fCompareInstructions             -> instructionAssembler.parseCompareInstructions(t as FCompareInstructionsContext)
                     RULE_fFieldInstructions               -> instructionAssembler.parseFieldInstructions(t as FFieldInstructionsContext)
                     RULE_fMethodInstructions              -> instructionAssembler.parseMethodInstructions(t as FMethodInstructionsContext)

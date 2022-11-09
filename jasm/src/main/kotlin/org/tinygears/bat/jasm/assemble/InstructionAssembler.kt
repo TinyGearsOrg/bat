@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.jasm.assemble
 
 import org.tinygears.bat.classfile.attribute.ExceptionEntry
@@ -26,6 +25,13 @@ import org.tinygears.bat.util.parseDescriptorToJvmTypes
 internal class InstructionAssembler constructor(private val constantPoolEditor: ConstantPoolEditor) {
 
     private val constantAssembler = ConstantAssembler(constantPoolEditor)
+
+    fun parseBasicInstructions(ctx: FBasicInstructionsContext): BasicInstruction {
+        val mnemonic = ctx.op.text
+        val opcode   = JvmOpCode[mnemonic]
+
+        return BasicInstruction.of(opcode)
+    }
 
     fun parseArithmeticInstructions(ctx: FArithmeticInstructionsContext): ArithmeticInstruction {
         val mnemonic = ctx.op.text
@@ -71,40 +77,11 @@ internal class InstructionAssembler constructor(private val constantPoolEditor: 
         return ArrayInstruction.of(opcode)
     }
 
-    fun parseExceptionInstructions(ctx: FExceptionInstructionsContext): ExceptionInstruction {
-        val mnemonic = ctx.op.text
-        val opcode   = JvmOpCode[mnemonic]
-
-        return ExceptionInstruction.of(opcode)
-    }
-
-    fun parseNullReferenceInstructions(ctx: FNullReferenceInstructionsContext): NullReferenceInstruction {
-        val mnemonic = ctx.op.text
-        val opcode   = JvmOpCode[mnemonic]
-
-        return NullReferenceInstruction.of(opcode)
-    }
-
-    fun parseNopInstructions(ctx: FNopInstructionContext): NopInstruction {
-        val mnemonic = ctx.op.text
-        val opcode   = JvmOpCode[mnemonic]
-        require(opcode == JvmOpCode.NOP)
-
-        return NopInstruction.create()
-    }
-
     fun parseReturnInstructions(ctx: FReturnInstructionsContext): ReturnInstruction {
         val mnemonic = ctx.op.text
         val opcode   = JvmOpCode[mnemonic]
 
         return ReturnInstruction.of(opcode)
-    }
-
-    fun parseMonitorInstructions(ctx: FMonitorInstructionsContext): MonitorInstruction {
-        val mnemonic = ctx.op.text
-        val opcode   = JvmOpCode[mnemonic]
-
-        return MonitorInstruction.of(opcode)
     }
 
     fun parseCompareInstructions(ctx: FCompareInstructionsContext): CompareInstruction {

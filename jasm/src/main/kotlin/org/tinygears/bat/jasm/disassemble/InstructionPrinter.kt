@@ -31,7 +31,7 @@ internal class InstructionPrinter constructor(private val printer:         Inden
 
     override fun visitAnyInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {}
 
-    override fun visitAnySimpleInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {
+    override fun visitAnySimpleInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: SimpleInstruction) {
         printCommon(offset, instruction, wide = false, appendNewLine = true)
         printEndLabels(offset + instruction.getLength(offset))
     }

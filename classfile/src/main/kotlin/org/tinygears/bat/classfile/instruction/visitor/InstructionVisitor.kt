@@ -24,8 +24,12 @@ import org.tinygears.bat.classfile.instruction.*
 fun interface InstructionVisitor {
     fun visitAnyInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction)
 
-    fun visitAnySimpleInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {
+    fun visitAnySimpleInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: SimpleInstruction) {
         visitAnyInstruction(classFile, method, code, offset, instruction)
+    }
+
+    fun visitBasicInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: BasicInstruction) {
+        visitAnySimpleInstruction(classFile, method, code, offset, instruction)
     }
 
     fun visitArithmeticInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ArithmeticInstruction) {
@@ -44,23 +48,7 @@ fun interface InstructionVisitor {
         visitAnySimpleInstruction(classFile, method, code, offset, instruction)
     }
 
-    fun visitMonitorInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: MonitorInstruction) {
-        visitAnySimpleInstruction(classFile, method, code, offset, instruction)
-    }
-
     fun visitReturnInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ReturnInstruction) {
-        visitAnySimpleInstruction(classFile, method, code, offset, instruction)
-    }
-
-    fun visitExceptionInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ExceptionInstruction) {
-        visitAnySimpleInstruction(classFile, method, code, offset, instruction)
-    }
-
-    fun visitNullReferenceInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: NullReferenceInstruction) {
-        visitAnySimpleInstruction(classFile, method, code, offset, instruction)
-    }
-
-    fun visitNopInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: NopInstruction) {
         visitAnySimpleInstruction(classFile, method, code, offset, instruction)
     }
 

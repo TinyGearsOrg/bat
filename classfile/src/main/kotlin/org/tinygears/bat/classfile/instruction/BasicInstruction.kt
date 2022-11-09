@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.instruction
 
 import org.tinygears.bat.classfile.ClassFile
@@ -21,18 +20,18 @@ import org.tinygears.bat.classfile.Method
 import org.tinygears.bat.classfile.attribute.CodeAttribute
 import org.tinygears.bat.classfile.instruction.visitor.InstructionVisitor
 
-class NullReferenceInstruction private constructor(opCode: JvmOpCode): SimpleInstruction(opCode) {
+class BasicInstruction private constructor(opCode: JvmOpCode): SimpleInstruction(opCode) {
 
     override fun accept(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, visitor: InstructionVisitor) {
-        visitor.visitNullReferenceInstruction(classFile, method, code, offset, this)
+        visitor.visitBasicInstruction(classFile, method, code, offset, this)
     }
 
     companion object {
-        internal fun create(opCode: JvmOpCode): NullReferenceInstruction {
-            return NullReferenceInstruction(opCode)
+        internal fun create(opCode: JvmOpCode): BasicInstruction {
+            return BasicInstruction(opCode)
         }
 
-        fun of(opCode: JvmOpCode): NullReferenceInstruction {
+        fun of(opCode: JvmOpCode): BasicInstruction {
             return create(opCode)
         }
     }

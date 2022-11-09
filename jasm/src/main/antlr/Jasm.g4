@@ -309,6 +309,7 @@ sInstruction
     : sLabel
     | fCatch
     | fCatchall
+    | fBasicInstructions
     | fReturnInstructions
     | fFieldInstructions
     | fImplicitVariableInstructions
@@ -321,9 +322,6 @@ sInstruction
     | fStackInstructions
     | fLiteralConstantInstructions
     | fWideLiteralConstantInstructions
-    | fExceptionInstructions
-    | fNullReferenceInstructions
-    | fNopInstruction
     | fBranchInstructions
     | fArrayInstructions
     | fPrimitiveArrayInstructions
@@ -334,7 +332,6 @@ sInstruction
     | fArithmeticInstructions
     | fConversionInstructions
     | fLiteralVariableInstructions
-    | fMonitorInstructions
     | fCompareInstructions
     | fInvokeDynamicInstructions
     | fLine
@@ -348,6 +345,14 @@ fEndlocal  : '.end local' variable=INT ;
 sLabel     : ':' label=ID ;
 fCatch     : '.catch' type=CLASS_NAME '{' start=sLabel '..' end=sLabel  '}' handle=sLabel ;
 fCatchall  : '.catchall' '{' start=sLabel '..' end=sLabel  '}' handle=sLabel ;
+
+fBasicInstructions: op=
+    ( 'athrow'
+    | 'nop'
+    | 'aconst_null'
+    | 'monitorenter'
+    | 'monitorexit' )
+    ;
 
 fReturnInstructions: op=
     ( 'areturn'
@@ -477,12 +482,6 @@ fWideLiteralConstantInstructions: op=
     | 'ldc2_w' ) value=sBaseValue
     ;
 
-fExceptionInstructions: op='athrow';
-
-fNopInstruction: op='nop';
-
-fNullReferenceInstructions: op='aconst_null';
-
 fBranchInstructions: op=
     ( 'if_acmpeq'
     | 'if_acmpne'
@@ -593,11 +592,6 @@ fConversionInstructions: op=
     ;
 
 fLiteralVariableInstructions: op='iinc' variable=INT ',' value=INT ;
-
-fMonitorInstructions: op=
-    ( 'monitorenter'
-    | 'monitorexit' )
-    ;
 
 fCompareInstructions: op=
     ( 'dcmpg'

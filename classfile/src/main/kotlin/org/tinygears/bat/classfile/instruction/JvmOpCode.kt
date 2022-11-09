@@ -293,12 +293,12 @@ enum class JvmOpCode constructor(
 
     // uncategorized instructions
 
-    NOP            (0x00, "nop",         1, { opCode, _ -> NopInstruction.create(opCode) }),
-    ACONST_NULL    (0x01, "aconst_null", 1, { opCode, _ -> NullReferenceInstruction.create(opCode) }),
-    ATHROW         (0xbf, "athrow",      1, { opCode, _ -> ExceptionInstruction.create(opCode) }),
+    NOP            (0x00, "nop",         1, { opCode, _ -> BasicInstruction.create(opCode) }),
+    ACONST_NULL    (0x01, "aconst_null", 1, { opCode, _ -> BasicInstruction.create(opCode) }),
+    ATHROW         (0xbf, "athrow",      1, { opCode, _ -> BasicInstruction.create(opCode) }),
 
-    MONITORENTER   (0xc2, "monitorenter", 1, { opCode, _ -> MonitorInstruction.create(opCode) }),
-    MONITOREXIT    (0xc3, "monitorexit",  1, { opCode, _ -> MonitorInstruction.create(opCode) }),
+    MONITORENTER   (0xc2, "monitorenter", 1, { opCode, _ -> BasicInstruction.create(opCode) }),
+    MONITOREXIT    (0xc3, "monitorexit",  1, { opCode, _ -> BasicInstruction.create(opCode) }),
 
     ANEWARRAY      (0xbd, "anewarray",      3, { opCode, _ -> ArrayClassInstruction.create(opCode) }),
     MULTIANEWARRAY (0xc5, "multianewarray", 4, { opCode, _ -> ArrayClassInstruction.create(opCode) }),

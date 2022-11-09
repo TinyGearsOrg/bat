@@ -30,7 +30,7 @@ internal class InstructionPrinter constructor(private val printer: IndentingPrin
 
     override fun visitAnyInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {}
 
-    override fun visitAnySimpleInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {
+    override fun visitAnySimpleInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: SimpleInstruction) {
         printer.println("%4d: %s".format(offset, instruction.mnemonic))
     }
 
