@@ -180,12 +180,17 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
             instruction.accept(classFile, method, attribute, currentOffset, blockAnalyser)
 
-            if (!isFlagSet(currentOffset, BLOCK_EXIT)) {
+            if (isFlagSet(currentOffset, BLOCK_EXIT)) {
+                break
+            } else {
                 val length     = instruction.getLength(offset)
-                val oldOffset  = currentOffset
-                currentOffset += length
+                val nextOffset = currentOffset + length
 
-                framesBefore[currentOffset] = framesAfter[oldOffset]
+                if (!evaluated[nextOffset]) {
+                    framesBefore[nextOffset] = framesAfter[currentOffset]
+                }
+
+                currentOffset = nextOffset
             }
         }
 

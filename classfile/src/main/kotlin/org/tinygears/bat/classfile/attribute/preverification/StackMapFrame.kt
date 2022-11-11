@@ -32,7 +32,7 @@ fun sameFrame(offsetDelta: Int): StackMapFrame {
     }
 }
 
-fun sameFrameOneStack(offsetDelta: Int, stackItem: VerificationType): StackMapFrame {
+fun sameLocalsOneStackFrame(offsetDelta: Int, stackItem: VerificationType): StackMapFrame {
     return if (offsetDelta in 0 .. SameLocalsOneStackItemFrame.MAX_OFFSET) {
         SameLocalsOneStackItemFrame.of(offsetDelta, stackItem)
     } else {

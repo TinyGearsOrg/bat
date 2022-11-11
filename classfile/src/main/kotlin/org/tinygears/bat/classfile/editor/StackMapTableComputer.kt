@@ -46,8 +46,8 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
             lastOffsetFramePair = Pair(offset, frameBefore)
         }
 
-        if (flags and CodeAnalyzer.BRANCH_TARGET != 0) {
-            logger.trace { "found branch target at offset $offset" }
+        if (flags and CodeAnalyzer.BRANCH_TARGET     != 0 ||
+            flags and CodeAnalyzer.EXCEPTION_HANDLER != 0) {
 
             val currentFrame = frameBefore
 
@@ -56,7 +56,7 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
 
             var frame =
                 if (currentFrame.stackSize == 0) {
-                    if (currentFrame == lastFrame) {
+                    if (currentFrame.variables == lastFrame.variables) {
                         sameFrame(offsetDelta)
                     } else if (currentFrame.variableCount > lastFrame.variableCount) {
                         val lastVariables    = lastFrame.variables.toVerificationTypeList(constantPoolEditor)
@@ -70,7 +70,7 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
                     }
                 } else if (currentFrame.stackSize == 1) {
                     if (currentFrame.variables == lastFrame.variables) {
-                        sameFrameOneStack(offsetDelta, currentFrame.peek().toVerificationType(constantPoolEditor))
+                        sameLocalsOneStackFrame(offsetDelta, currentFrame.peek().toVerificationType(constantPoolEditor))
                     } else {
                         null
                     }
@@ -83,6 +83,8 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
                 val currentStack     = currentFrame.stack.toVerificationTypeList(constantPoolEditor)
                 frame = fullFrame(offsetDelta, currentVariables, currentStack)
             }
+
+            logger.trace { "offset $offset: adding frame $frame"}
 
             frameList.add(frame)
 
