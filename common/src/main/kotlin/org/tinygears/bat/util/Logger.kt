@@ -13,17 +13,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.tinygears.bat.classfile.editor
+package org.tinygears.bat.util
 
-import org.tinygears.bat.classfile.instruction.JvmInstruction
-import org.tinygears.bat.classfile.verifier.Frame
-import org.tinygears.bat.classfile.verifier.FrameProcessor
+interface Logger {
+    fun trace(obj: Object)
+    fun trace(msg: String)
+    fun trace(msg: () -> String)
 
-internal class LocalVariableSizeComputer: FrameProcessor {
-    var localVariableSize: Int = 0
-        private set
+    fun debug(obj: Object)
+    fun debug(msg: String)
+    fun debug(msg: () -> String)
 
-    override fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame) {
-        localVariableSize = localVariableSize.coerceAtLeast(frameAfter.variableSize)
-    }
+    fun info(obj: Object)
+    fun info(msg: String)
+    fun info(msg: () -> String)
+
+    fun warn(obj: Object)
+    fun warn(msg: String)
+    fun warn(msg: () -> String)
+
+    fun error(obj: Object)
+    fun error(msg: String)
+    fun error(msg: () -> String)
+}
+
+enum class LogLevel {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+    OFF
 }

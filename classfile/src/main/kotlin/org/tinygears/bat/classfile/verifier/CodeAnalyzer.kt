@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.verifier
 
 import org.tinygears.bat.classfile.ClassFile
@@ -29,6 +28,9 @@ import org.tinygears.bat.classfile.constant.Utf8Constant
 import org.tinygears.bat.classfile.instruction.*
 import org.tinygears.bat.classfile.instruction.JvmOpCode.*
 import org.tinygears.bat.classfile.instruction.visitor.InstructionVisitor
+import org.tinygears.bat.classfile.util.getLoggerFor
+import org.tinygears.bat.util.Logger
+import org.tinygears.bat.util.LoggerFactory
 import org.tinygears.bat.util.JAVA_LANG_STRING_TYPE
 import org.tinygears.bat.util.asJvmType
 import org.tinygears.bat.util.parseDescriptorToJvmTypes
@@ -47,10 +49,14 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
     private var processingQueue: ArrayDeque<Pair<Int, () -> Unit>> = ArrayDeque()
 
+    private lateinit var logger: Logger
+
     override fun visitAnyAttribute(classFile: ClassFile, attribute: Attribute) {}
 
     override fun visitCode(classFile: ClassFile, method: Method, attribute: CodeAttribute) {
-//        println("evaluating method ${method.getFullExternalMethodSignature(classFile)}: ")
+        logger = LoggerFactory.getLoggerFor(CodeAnalyzer::class.java, classFile, method)
+
+        logger.info { "evaluating method ${method.getFullExternalMethodSignature(classFile)}" }
 
         evaluated = Array(attribute.codeLength) { false }
         status    = Array(attribute.codeLength) { 0 }
@@ -77,13 +83,25 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             setupFrame()
             evaluateBasicBlock(classFile, method, code, nextBlockOffset)
         }
+
+        // after all reachable code has been executed, call processors.
+        for (offset in evaluated.indices) {
+            if (evaluated[offset]) {
+                val instruction = JvmInstruction.create(code.code, offset)
+
+                for (processor in processors) {
+                    processor.handleInstruction(offset, status[offset], instruction, framesBefore[offset]!!, framesAfter[offset]!!)
+                }
+            }
+        }
     }
 
     private fun enqueueExceptionHandler(classFile: ClassFile, exceptionEntry: ExceptionEntry) {
+        logger.debug { "enqueue exception handler at offset ${exceptionEntry.handlerPC}" }
+
         val handlerPC = exceptionEntry.handlerPC
 
         val setupFrame: () -> Unit = {
-//            println("setup frame for exception handler $exceptionEntry")
             val frame = framesBefore[exceptionEntry.startPC]!!.copy()
             frame.clearStack()
 
@@ -101,6 +119,12 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
         setStatusFlag(handlerPC, EXCEPTION_HANDLER)
 
         processingQueue.addLast(Pair(handlerPC, setupFrame))
+    }
+
+    private fun enqueueBranchTarget(offset: Int, frame: Frame) {
+        logger.debug { "enqueue branch target at offset $offset" }
+        setStatusFlag(offset, BRANCH_TARGET)
+        enqueueBasicBlock(offset, frame)
     }
 
     private fun enqueueBasicBlock(offset: Int, frame: Frame) {
@@ -139,7 +163,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
     private fun evaluateBasicBlock(classFile: ClassFile, method: Method, attribute: CodeAttribute, offset: Int) {
         var currentOffset = offset
 
-//        println("starting block at offset $offset")
+        logger.trace { "starting block at offset $offset" }
         while (!evaluated[currentOffset]) {
             evaluated[currentOffset] = true
 
@@ -147,12 +171,9 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
             instruction.accept(classFile, method, attribute, currentOffset, frameUpdater)
 
-            for (processor in processors) {
-                processor.handleInstruction(currentOffset, instruction, framesBefore[currentOffset]!!, framesAfter[currentOffset]!!)
-            }
-//            println("$currentOffset: $instruction")
-//            println("    before: ${framesBefore[currentOffset]}")
-//            println("    after: ${framesAfter[currentOffset]}")
+            logger.trace { "$currentOffset: $instruction" }
+            logger.trace { "    before: ${framesBefore[currentOffset]}" }
+            logger.trace { "    after: ${framesAfter[currentOffset]}" }
 
             instruction.accept(classFile, method, attribute, currentOffset, blockAnalyser)
 
@@ -164,7 +185,8 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 framesBefore[currentOffset] = framesAfter[oldOffset]
             }
         }
-//        println("finished block")
+
+        logger.trace("finished block")
     }
 
     inner class FrameUpdater: InstructionVisitor {
@@ -757,11 +779,11 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             val frameAfter = framesAfter[offset]!!
 
             val defaultOffset = offset + instruction.defaultOffset
-            enqueueBasicBlock(defaultOffset, frameAfter)
+            enqueueBranchTarget(defaultOffset, frameAfter)
 
             for (matchOffsetPair in instruction) {
                 val targetOffset = offset + matchOffsetPair.offset
-                enqueueBasicBlock(targetOffset, frameAfter)
+                enqueueBranchTarget(targetOffset, frameAfter)
             }
         }
 
@@ -776,12 +798,12 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 GOTO,
                 GOTO_W -> {
-                    enqueueBasicBlock(targetOffset, frameAfter)
+                    enqueueBranchTarget(targetOffset, frameAfter)
                 }
 
                 else -> {
-                    enqueueBasicBlock(targetOffset, frameAfter)
                     enqueueBasicBlock(nextOffset, frameAfter)
+                    enqueueBranchTarget(targetOffset, frameAfter)
                 }
             }
         }
@@ -806,11 +828,12 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
     }
 
     companion object {
-        private const val BLOCK_ENTRY       = 1 shl 1
-        private const val BLOCK_EXIT        = 1 shl 2
-        private const val EXCEPTION_HANDLER = 1 shl 3
+        const val BLOCK_ENTRY       = 1 shl 1
+        const val BLOCK_EXIT        = 1 shl 2
+        const val EXCEPTION_HANDLER = 1 shl 3
+        const val BRANCH_TARGET     = 1 shl 4
 
-        fun of(vararg processors: FrameProcessor): CodeAnalyzer {
+        fun withProcessors(vararg processors: FrameProcessor): CodeAnalyzer {
             return CodeAnalyzer(processors.toList())
         }
     }

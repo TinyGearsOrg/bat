@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.editor
 
 import org.tinygears.bat.classfile.instruction.JvmInstruction
@@ -24,7 +23,7 @@ internal class StackSizeComputer: FrameProcessor {
     var maxStackSize: Int = 0
         private set
 
-    override fun handleInstruction(offset: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame) {
+    override fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame) {
         maxStackSize = maxStackSize.coerceAtLeast(frameAfter.stackSize)
     }
 }

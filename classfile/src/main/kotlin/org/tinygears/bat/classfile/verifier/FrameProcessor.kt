@@ -19,5 +19,5 @@ package org.tinygears.bat.classfile.verifier
 import org.tinygears.bat.classfile.instruction.JvmInstruction
 
 fun interface FrameProcessor {
-    fun handleInstruction(offset: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
+    fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
 }

@@ -15,15 +15,26 @@
  */
 package org.tinygears.bat.classfile.editor
 
+import org.tinygears.bat.classfile.ClassFile
+import org.tinygears.bat.classfile.Method
 import org.tinygears.bat.classfile.instruction.JvmInstruction
+import org.tinygears.bat.classfile.util.getLoggerFor
+import org.tinygears.bat.util.Logger
+import org.tinygears.bat.util.LoggerFactory
+import org.tinygears.bat.classfile.verifier.CodeAnalyzer
 import org.tinygears.bat.classfile.verifier.Frame
 import org.tinygears.bat.classfile.verifier.FrameProcessor
 
-internal class LocalVariableSizeComputer: FrameProcessor {
-    var localVariableSize: Int = 0
-        private set
+internal class StackMapTableComputer constructor(val classFile: ClassFile, val method: Method): FrameProcessor {
+    private val logger: Logger = LoggerFactory.getLoggerFor(StackMapTableComputer::class.java, classFile, method)
+
+    init {
+        logger.info { "computing stack map table for ${method.getFullExternalMethodSignature(classFile)}" }
+    }
 
     override fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame) {
-        localVariableSize = localVariableSize.coerceAtLeast(frameAfter.variableSize)
+        if (flags and CodeAnalyzer.BRANCH_TARGET != 0) {
+            logger.trace { "found branch target at offset $offset" }
+        }
     }
 }

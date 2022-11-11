@@ -127,8 +127,9 @@ class CodeEditor private constructor(private val classEditor:   ClassEditor,
 
         val stackSizeComputer         = StackSizeComputer()
         val localVariableSizeComputer = LocalVariableSizeComputer()
+        val stackMapTableComputer     = StackMapTableComputer(classFile, method)
 
-        val analyzer = CodeAnalyzer.of(stackSizeComputer, localVariableSizeComputer)
+        val analyzer = CodeAnalyzer.withProcessors(stackSizeComputer, localVariableSizeComputer, stackMapTableComputer)
         analyzer.visitCode(classFile, method, codeAttribute)
 
         codeAttribute.maxStack  = stackSizeComputer.maxStackSize
