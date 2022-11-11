@@ -76,7 +76,7 @@ internal class InstructionPrinter constructor(private val printer: IndentingPrin
     }
 
     override fun visitArrayPrimitiveTypeInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ArrayPrimitiveTypeInstruction) {
-        printer.println("%4d: %-13s  %s".format(offset, instruction.mnemonic, instruction.arrayType.toString().lowercase(Locale.getDefault())))
+        printer.println("%4d: %-13s  %s".format(offset, instruction.mnemonic, instruction.primitiveType.toString().lowercase(Locale.getDefault())))
     }
 
     override fun visitLiteralVariableInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: LiteralVariableInstruction) {
