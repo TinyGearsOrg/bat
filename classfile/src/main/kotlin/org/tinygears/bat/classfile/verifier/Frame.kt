@@ -13,13 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.verifier
 
+import org.tinygears.bat.classfile.attribute.preverification.VerificationType
+import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.util.mutableListOfCapacity
+import java.util.*
 
-class Frame private constructor(private val variables: MutableList<VerificationType?> = mutableListOfCapacity(0),
-                                private val stack:     MutableList<VerificationType>  = mutableListOfCapacity(0)) {
+class Frame private constructor(private val _variables: MutableList<VariableType> = mutableListOfCapacity(0),
+                                private val _stack:     MutableList<VariableType> = mutableListOfCapacity(0)) {
+
+    val variables: List<VariableType>
+        get() = _variables
+
+    val stack: List<VariableType>
+        get() = _stack
 
     val stackSize: Int
         get() = stack.fold(0) { agg, type -> agg + type.operandSize }
@@ -27,95 +35,117 @@ class Frame private constructor(private val variables: MutableList<VerificationT
     val variableSize: Int
         get() = variables.size
 
+    val variableCount: Int
+        get() {
+            var i = 0
+            var count = 0
+            while (i < variables.size) {
+                val type = variables[i]
+                count++
+                i += type.operandSize
+            }
+            return count
+        }
+
     fun copy(): Frame {
         return Frame(variables.toMutableList(), stack.toMutableList())
     }
 
-    fun pop(): VerificationType {
-        return stack.removeLast()
+    fun pop(): VariableType {
+        return _stack.removeLast()
     }
 
-    fun peek(): VerificationType {
-        return stack.last()
+    fun peek(): VariableType {
+        return _stack.last()
     }
 
     fun pop(count: Int) {
         for (i in 0 until count) {
-            stack.removeLast()
+            _stack.removeLast()
         }
     }
 
-    fun push(type: VerificationType) {
-        stack.add(type)
+    fun push(type: VariableType) {
+        _stack.add(type)
     }
 
     fun clearStack() {
-        stack.clear()
+        _stack.clear()
     }
 
-    fun load(variable: Int): VerificationType {
+    fun load(variable: Int): VariableType {
         val value = variables[variable]
-        check(value != null && value !is TopType)
+        check(value !is TopType)
         return value
     }
 
-    fun store(variable: Int, type: VerificationType) {
+    fun store(variable: Int, type: VariableType) {
         val maxVariableIndex = if (type.isCategory2) variable + 1 else variable
 
         ensureVariableCapacity(maxVariableIndex)
-        variables[variable] = type
-
-        if (type.isCategory2) {
-            variables[variable + 1] = TopType
-        }
+        _variables[variable] = type
     }
 
     private fun ensureVariableCapacity(capacity: Int) {
         while (capacity >= variables.size) {
-            variables.add(null)
+            _variables.add(TopType)
         }
     }
 
-    internal fun referenceInitialized(reference: VerificationType) {
+    internal fun referenceInitialized(reference: VariableType) {
         require(reference is UninitializedType ||
                 reference is UninitializedThisType)
 
         if (reference is UninitializedType) {
             val initializedReference = JavaReferenceType.of(reference.classType)
 
-            for (i in variables.indices) {
-                if (variables[i] == reference) {
-                    variables[i] = initializedReference
+            for (i in _variables.indices) {
+                if (_variables[i] == reference) {
+                    _variables[i] = initializedReference
                 }
             }
 
-            for (i in stack.indices) {
-                if (stack[i] == reference) {
-                    stack[i] = initializedReference
+            for (i in _stack.indices) {
+                if (_stack[i] == reference) {
+                    _stack[i] = initializedReference
                 }
             }
         } else if (reference is UninitializedThisType) {
             val initializedReference = JavaReferenceType.of(reference.classType)
 
-            for (i in variables.indices) {
-                if (variables[i] is UninitializedThisType) {
-                    variables[i] = initializedReference
+            for (i in _variables.indices) {
+                if (_variables[i] is UninitializedThisType) {
+                    _variables[i] = initializedReference
                 }
             }
 
-            for (i in stack.indices) {
-                if (stack[i] is UninitializedThisType) {
-                    stack[i] = initializedReference
+            for (i in _stack.indices) {
+                if (_stack[i] is UninitializedThisType) {
+                    _stack[i] = initializedReference
                 }
             }
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Frame
+
+        return _variables == other._variables &&
+               _stack     == other._stack
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(_variables, _stack)
+    }
+
     override fun toString(): String {
         return buildString {
-            append(variables.joinToString(separator = ", ", prefix = "{", postfix = "}", transform = { it?.name ?: "" }))
+            append(_variables.joinToString(separator = ", ", prefix = "{", postfix = "}", transform = { it?.name ?: "" }))
             append(" ")
-            append(stack.joinToString(separator = ", ", prefix = "{", postfix = "}", transform = { it.name }))
+            append(_stack.joinToString(separator = ", ", prefix = "{", postfix = "}", transform = { it.name }))
         }
     }
 
@@ -124,4 +154,15 @@ class Frame private constructor(private val variables: MutableList<VerificationT
             return Frame()
         }
     }
+}
+
+fun List<VariableType>.toVerificationTypeList(constantPoolEditor: ConstantPoolEditor): List<VerificationType> {
+    val result = mutableListOf<VerificationType>()
+    var i = 0
+    while (i < size) {
+        val type = this[i]
+        result.add(type.toVerificationType(constantPoolEditor))
+        i += type.operandSize
+    }
+    return result
 }

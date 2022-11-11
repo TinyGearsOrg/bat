@@ -80,11 +80,14 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
         while (processingQueue.isNotEmpty()) {
             val (nextBlockOffset, setupFrame) = processingQueue.removeLast()
-            setupFrame()
-            evaluateBasicBlock(classFile, method, code, nextBlockOffset)
+            if (!evaluated[nextBlockOffset]) {
+                // TODO: if the block was already evaluated, check if the stack is consistent
+                setupFrame()
+                evaluateBasicBlock(classFile, method, code, nextBlockOffset)
+            }
         }
 
-        // after all reachable code has been executed, call processors.
+        // after all reachable code has been evaluated, call processors with computed frames.
         for (offset in evaluated.indices) {
             if (evaluated[offset]) {
                 val instruction = JvmInstruction.create(code.code, offset)
@@ -111,7 +114,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 exceptionEntry.getCaughtExceptionClassName(classFile)!!.toJvmType()
             }
 
-            frame.push(VerificationType.of(exceptionType))
+            frame.push(VariableType.of(exceptionType))
             framesBefore[handlerPC] = frame
         }
 
@@ -145,12 +148,12 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             if (method.getName(classFile) == "<init>") {
                 frame.store(variableIndex++, UninitializedThisType.of(classType))
             } else {
-                frame.store(variableIndex++, UninitializedThisType.of(classType))
+                frame.store(variableIndex++, JavaReferenceType.of(classType))
             }
         }
 
         for (parameterType in parameterTypes) {
-            val verificationType = VerificationType.of(parameterType)
+            val verificationType = VariableType.of(parameterType)
             frame.store(variableIndex++, verificationType)
             if (verificationType.isCategory2) {
                 variableIndex++
@@ -501,11 +504,11 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 GETFIELD -> {
                     frameAfter.pop()
-                    frameAfter.push(VerificationType.of(fieldType))
+                    frameAfter.push(VariableType.of(fieldType))
                 }
 
                 GETSTATIC -> {
-                    frameAfter.push(VerificationType.of(fieldType))
+                    frameAfter.push(VariableType.of(fieldType))
                 }
 
                 PUTFIELD  -> frameAfter.pop(2)
@@ -540,7 +543,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
 
             if (!returnType.isVoidType) {
-                frameAfter.push(VerificationType.of(returnType))
+                frameAfter.push(VariableType.of(returnType))
             }
 
             framesAfter[offset] = frameAfter
@@ -555,7 +558,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             frameAfter.pop()
 
             if (!returnType.isVoidType) {
-                frameAfter.push(VerificationType.of(returnType))
+                frameAfter.push(VariableType.of(returnType))
             }
 
             framesAfter[offset] = frameAfter
@@ -569,7 +572,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             frameAfter.pop(parameterTypes.size)
 
             if (!returnType.isVoidType) {
-                frameAfter.push(VerificationType.of(returnType))
+                frameAfter.push(VariableType.of(returnType))
             }
 
             framesAfter[offset] = frameAfter

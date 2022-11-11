@@ -38,7 +38,7 @@ internal class StackMapFramePrinter constructor(private val printer: IndentingPr
         printer.println("frame_type = ${frame.frameType} /* same */")
     }
 
-    override fun visitSameExtendedFrame(classFile: ClassFile, frame: SameExtendedFrame) {
+    override fun visitSameFrameExtended(classFile: ClassFile, frame: SameFrameExtended) {
         printer.println("frame_type = ${frame.frameType} /* same_frame_extended */")
         printer.levelUp()
         printer.println("offset_delta = ${frame.offsetDelta}")
@@ -70,7 +70,7 @@ internal class StackMapFramePrinter constructor(private val printer: IndentingPr
         printer.levelDown()
     }
 
-    override fun visitSameLocalsOneStackItemExtendedFrame(classFile: ClassFile, frame: SameLocalsOneStackItemExtendedFrame) {
+    override fun visitSameLocalsOneStackItemFrameExtended(classFile: ClassFile, frame: SameLocalsOneStackItemFrameExtended) {
         printer.println("frame_type = ${frame.frameType} /* same_locals_1_stack_item_frame_extended */")
         printer.levelUp()
         printer.println("offset_delta = ${frame.offsetDelta}")

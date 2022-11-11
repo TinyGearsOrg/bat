@@ -18,10 +18,8 @@ package org.tinygears.bat.classfile.editor
 
 import org.tinygears.bat.classfile.ClassFile
 import org.tinygears.bat.classfile.Method
-import org.tinygears.bat.classfile.attribute.Attribute
-import org.tinygears.bat.classfile.attribute.AttributeMap
-import org.tinygears.bat.classfile.attribute.CodeAttribute
-import org.tinygears.bat.classfile.attribute.ExceptionEntry
+import org.tinygears.bat.classfile.attribute.*
+import org.tinygears.bat.classfile.attribute.preverification.StackMapTableAttribute
 import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.classfile.instruction.JvmInstruction
 import org.tinygears.bat.classfile.instruction.editor.InstructionWriter
@@ -134,6 +132,17 @@ class CodeEditor private constructor(private val classEditor:   ClassEditor,
 
         codeAttribute.maxStack  = stackSizeComputer.maxStackSize
         codeAttribute.maxLocals = localVariableSizeComputer.localVariableSize
+
+        val stackMapFrames = stackMapTableComputer.frames
+        if (stackMapFrames.isNotEmpty()) {
+            val stackMapTableAttribute = addOrGetAttribute<StackMapTableAttribute>(AttributeType.STACK_MAP_TABLE)
+            stackMapTableAttribute.clear()
+            for (frame in stackMapFrames) {
+                stackMapTableAttribute.add(frame)
+            }
+        } else {
+            removeAttribute(AttributeType.STACK_MAP_TABLE)
+        }
 
         modifications.clear()
         addedExceptionList.clear()

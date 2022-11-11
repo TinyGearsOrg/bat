@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.editor
 
 import org.tinygears.bat.classfile.attribute.Attribute
@@ -35,5 +34,12 @@ abstract class AttributeEditor {
             addAttribute(attribute)
         }
         return attribute
+    }
+
+    fun removeAttribute(type: AttributeType) {
+        val attribute: Attribute? = attributeMap[type]
+        if (attribute != null) {
+            attributeMap.removeAttribute(attribute)
+        }
     }
 }

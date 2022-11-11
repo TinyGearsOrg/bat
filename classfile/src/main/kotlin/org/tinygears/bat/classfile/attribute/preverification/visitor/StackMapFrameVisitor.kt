@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.attribute.preverification.visitor
 
 import org.tinygears.bat.classfile.ClassFile
@@ -26,7 +25,7 @@ fun interface StackMapFrameVisitor {
         visitAnyFrame(classFile, frame)
     }
 
-    fun visitSameExtendedFrame(classFile: ClassFile, frame: SameExtendedFrame) {
+    fun visitSameFrameExtended(classFile: ClassFile, frame: SameFrameExtended) {
         visitAnyFrame(classFile, frame)
     }
 
@@ -46,7 +45,7 @@ fun interface StackMapFrameVisitor {
         visitAnyFrame(classFile, frame)
     }
 
-    fun visitSameLocalsOneStackItemExtendedFrame(classFile: ClassFile, frame: SameLocalsOneStackItemExtendedFrame) {
+    fun visitSameLocalsOneStackItemFrameExtended(classFile: ClassFile, frame: SameLocalsOneStackItemFrameExtended) {
         visitAnyFrame(classFile, frame)
     }
 }

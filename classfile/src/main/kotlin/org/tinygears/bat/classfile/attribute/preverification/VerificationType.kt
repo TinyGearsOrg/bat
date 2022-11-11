@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.tinygears.bat.classfile.attribute.preverification
 
 import org.tinygears.bat.classfile.*
@@ -236,6 +235,10 @@ data class ObjectVariable private constructor(private var _classIndex: Int = -1)
         internal fun empty(): ObjectVariable {
             return ObjectVariable()
         }
+
+        fun of(classIndex: Int): ObjectVariable {
+            return ObjectVariable(classIndex)
+        }
     }
 }
 
@@ -265,6 +268,10 @@ data class UninitializedVariable private constructor(private var _offset: Int = 
     companion object {
         internal fun empty(): UninitializedVariable {
             return UninitializedVariable()
+        }
+
+        fun of(offset: Int): UninitializedVariable {
+            return UninitializedVariable(offset)
         }
     }
 }

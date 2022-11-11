@@ -24,6 +24,44 @@ import org.tinygears.bat.classfile.io.ClassDataInput
 import org.tinygears.bat.classfile.io.ClassDataOutput
 import org.tinygears.bat.util.mutableListOfCapacity
 
+fun sameFrame(offsetDelta: Int): StackMapFrame {
+    return if (offsetDelta > SameFrame.MAX_OFFSET) {
+        SameFrameExtended.of(offsetDelta)
+    } else {
+        SameFrame.of(offsetDelta)
+    }
+}
+
+fun sameFrameOneStack(offsetDelta: Int, stackItem: VerificationType): StackMapFrame {
+    return if (offsetDelta in 0 .. SameLocalsOneStackItemFrame.MAX_OFFSET) {
+        SameLocalsOneStackItemFrame.of(offsetDelta, stackItem)
+    } else {
+        SameLocalsOneStackItemFrameExtended.of(offsetDelta, stackItem)
+    }
+}
+
+fun appendFrame(offsetDelta: Int, lastVariables: List<VerificationType>, currentVariables: List<VerificationType>): StackMapFrame {
+    val appendedVariables = currentVariables.size - lastVariables.size
+    return if (appendedVariables in 1 .. 3) {
+        val size = currentVariables.size
+        AppendFrame.of(offsetDelta, currentVariables.subList(size - appendedVariables, size))
+    } else {
+        FullFrame.of(offsetDelta, currentVariables, emptyList())
+    }
+}
+
+fun chopFrame(offsetDelta: Int, choppedVariables: Int, variables: List<VerificationType>): StackMapFrame {
+    return if (choppedVariables in 1 .. 3) {
+        ChopFrame.of(offsetDelta, choppedVariables)
+    } else {
+        FullFrame.of(offsetDelta, variables, emptyList())
+    }
+}
+
+fun fullFrame(offsetDelta: Int, variables: List<VerificationType>, stack: List<VerificationType>): StackMapFrame {
+    return FullFrame.of(offsetDelta, variables, stack)
+}
+
 abstract class StackMapFrame protected constructor(val frameType: Int): ClassFileContent() {
     internal abstract val type: StackMapFrameType
 
@@ -42,6 +80,8 @@ abstract class StackMapFrame protected constructor(val frameType: Int): ClassFil
     abstract fun accept(classFile: ClassFile, visitor: StackMapFrameVisitor)
 
     open fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {}
+
+    abstract override fun toString(): String
 
     companion object {
         internal fun read(input: ClassDataInput): StackMapFrame {
@@ -71,10 +111,21 @@ class SameFrame private constructor(frameType: Int): StackMapFrame(frameType) {
         visitor.visitSameFrame(classFile, this)
     }
 
+    override fun toString(): String {
+        return "SameFrame($offsetDelta)"
+    }
+
     companion object {
-        internal fun of(frameType: Int): SameFrame {
-            require(frameType in 0 .. 63)
+        const val MAX_OFFSET = 63
+
+        internal fun create(frameType: Int): SameFrame {
+            require(frameType in 0 .. MAX_OFFSET)
             return SameFrame(frameType)
+        }
+
+        fun of(offsetDelta: Int): SameFrame {
+            require(offsetDelta in 0 .. MAX_OFFSET) { "offsetDelta must be in the range of [0, 63]" }
+            return SameFrame(offsetDelta)
         }
     }
 }
@@ -108,18 +159,28 @@ class ChopFrame private constructor(            frameType:    Int,
         visitor.visitChopFrame(classFile, this)
     }
 
+    override fun toString(): String {
+        return "ChopFrame($offsetDelta,$choppedVariables)"
+    }
+
     companion object {
-        internal fun of(frameType: Int): ChopFrame {
+        internal fun create(frameType: Int): ChopFrame {
             require(frameType in 248 .. 250)
             return ChopFrame(frameType)
+        }
+
+        fun of(offsetDelta: Int, choppedVariables: Int): ChopFrame {
+            require(offsetDelta >= 0) { "offsetDelta must not be negative" }
+            require(choppedVariables in 1 .. 3) { "number of chopped variables must be in the range of [1, 3]"}
+            return ChopFrame(251 - choppedVariables, offsetDelta)
         }
     }
 }
 
-class SameExtendedFrame private constructor(            frameType:    Int,
+class SameFrameExtended private constructor(            frameType:    Int,
                                             private var _offsetDelta: Int = 0): StackMapFrame(frameType) {
     override val type: StackMapFrameType
-        get() = StackMapFrameType.SAME_EXTENDED_FRAME
+        get() = StackMapFrameType.SAME_FRAME_EXTENDED
 
     override val contentSize: Int
         get() = 3
@@ -139,13 +200,22 @@ class SameExtendedFrame private constructor(            frameType:    Int,
     }
 
     override fun accept(classFile: ClassFile, visitor: StackMapFrameVisitor) {
-        visitor.visitSameExtendedFrame(classFile, this)
+        visitor.visitSameFrameExtended(classFile, this)
+    }
+
+    override fun toString(): String {
+        return "SameFrameExtended($offsetDelta)"
     }
 
     companion object {
-        internal fun of(frameType: Int): SameExtendedFrame {
+        internal fun create(frameType: Int): SameFrameExtended {
             require(frameType == 251)
-            return SameExtendedFrame(frameType)
+            return SameFrameExtended(frameType)
+        }
+
+        fun of(offsetDelta: Int): SameFrameExtended {
+            require(offsetDelta >= 0) { "offsetDelta must not be negative" }
+            return SameFrameExtended(251, offsetDelta)
         }
     }
 }
@@ -206,10 +276,20 @@ class AppendFrame private constructor(            frameType:    Int,
         }
     }
 
+    override fun toString(): String {
+        return "AppendFrame($offsetDelta,$appendedVariables,$locals)"
+    }
+
     companion object {
-        internal fun of(frameType: Int): AppendFrame {
+        internal fun create(frameType: Int): AppendFrame {
             require(frameType in 252 .. 254)
             return AppendFrame(frameType)
+        }
+
+        fun of(offsetDelta: Int, localTypes: List<VerificationType>): AppendFrame {
+            require(offsetDelta >= 0) { "offsetDelta must not be negative" }
+            require(localTypes.size in 1 .. 3) { "number of added variables must be in the range of [1, 3]"}
+            return AppendFrame(251 + localTypes.size, offsetDelta, localTypes.toMutableList())
         }
     }
 }
@@ -249,21 +329,32 @@ class SameLocalsOneStackItemFrame private constructor(            frameType: Int
         _stack.referencedConstantsAccept(classFile, visitor)
     }
 
+    override fun toString(): String {
+        return "SameLocalsOneStackItemFrame($offsetDelta,$stackItem)"
+    }
+
     companion object {
-        internal fun of(frameType: Int): SameLocalsOneStackItemFrame {
+        const val MAX_OFFSET = 63
+
+        internal fun create(frameType: Int): SameLocalsOneStackItemFrame {
             require(frameType in 64 .. 127)
             return SameLocalsOneStackItemFrame(frameType)
+        }
+
+        fun of(offsetDelta: Int, stackItem: VerificationType): SameLocalsOneStackItemFrame {
+            require(offsetDelta in 0 .. MAX_OFFSET) { "offsetDelta must be in the range of [0, 64]" }
+            return SameLocalsOneStackItemFrame(offsetDelta + 64, stackItem)
         }
     }
 }
 
-class SameLocalsOneStackItemExtendedFrame private constructor(            frameType:    Int,
+class SameLocalsOneStackItemFrameExtended private constructor(            frameType:    Int,
                                                               private var _offsetDelta: Int = 0,
                                                               private var _stack:       VerificationType = TopVariable.empty())
     : StackMapFrame(frameType) {
 
     override val type: StackMapFrameType
-        get() = StackMapFrameType.SAME_LOCALS_1_STACK_ITEM_EXTENDED_FRAME
+        get() = StackMapFrameType.SAME_LOCALS_1_STACK_ITEM_FRAME_EXTENDED
 
     override val contentSize: Int
         get() = 3 + _stack.contentSize
@@ -288,17 +379,26 @@ class SameLocalsOneStackItemExtendedFrame private constructor(            frameT
     }
 
     override fun accept(classFile: ClassFile, visitor: StackMapFrameVisitor) {
-        visitor.visitSameLocalsOneStackItemExtendedFrame(classFile, this)
+        visitor.visitSameLocalsOneStackItemFrameExtended(classFile, this)
     }
 
     override fun referencedConstantsAccept(classFile: ClassFile, visitor: ReferencedConstantVisitor) {
         _stack.referencedConstantsAccept(classFile, visitor)
     }
 
+    override fun toString(): String {
+        return "SameFrameOneStackItemFrameExtended($offsetDelta,$stackItem)"
+    }
+
     companion object {
-        internal fun of(frameType: Int): SameLocalsOneStackItemExtendedFrame {
+        internal fun create(frameType: Int): SameLocalsOneStackItemFrameExtended {
             require(frameType == 247)
-            return SameLocalsOneStackItemExtendedFrame(frameType)
+            return SameLocalsOneStackItemFrameExtended(frameType)
+        }
+
+        fun of(offsetDelta: Int, stackItem: VerificationType): SameLocalsOneStackItemFrameExtended {
+            require(offsetDelta >= 0) { "offsetDelta must not be negative" }
+            return SameLocalsOneStackItemFrameExtended(247, offsetDelta, stackItem)
         }
     }
 }
@@ -353,31 +453,40 @@ class FullFrame private constructor(            frameType:    Int,
         }
     }
 
+    override fun toString(): String {
+        return "FullFrame($offsetDelta,$locals,$stack)"
+    }
+
     companion object {
-        internal fun of(frameType: Int): FullFrame {
+        internal fun create(frameType: Int): FullFrame {
             require(frameType == 255)
             return FullFrame(frameType)
+        }
+
+        fun of(offsetDelta: Int, locals: List<VerificationType>, stack: List<VerificationType>): FullFrame {
+            require(offsetDelta >= 0) { "offsetDelta must not be negative" }
+            return FullFrame(255, offsetDelta, locals.toMutableList(), stack.toMutableList())
         }
     }
 }
 
 internal enum class StackMapFrameType constructor(private val supplier: (Int) -> StackMapFrame) {
-    SAME_FRAME                             ({ SameFrame.of(it) }),
-    SAME_LOCALS_1_STACK_ITEM_FRAME         ({ SameLocalsOneStackItemFrame.of(it) }),
-    SAME_LOCALS_1_STACK_ITEM_EXTENDED_FRAME({ SameLocalsOneStackItemExtendedFrame.of(it) }),
-    CHOP_FRAME                             ({ ChopFrame.of(it) }),
-    SAME_EXTENDED_FRAME                    ({ SameExtendedFrame.of(it) }),
-    APPEND_FRAME                           ({ AppendFrame.of(it) }),
-    FULL_FRAME                             ({ FullFrame.of(it) });
+    SAME_FRAME                             ({ SameFrame.create(it) }),
+    SAME_LOCALS_1_STACK_ITEM_FRAME         ({ SameLocalsOneStackItemFrame.create(it) }),
+    SAME_LOCALS_1_STACK_ITEM_FRAME_EXTENDED({ SameLocalsOneStackItemFrameExtended.create(it) }),
+    CHOP_FRAME                             ({ ChopFrame.create(it) }),
+    SAME_FRAME_EXTENDED                    ({ SameFrameExtended.create(it) }),
+    APPEND_FRAME                           ({ AppendFrame.create(it) }),
+    FULL_FRAME                             ({ FullFrame.create(it) });
 
     companion object {
         fun of(frameType: Int) : StackMapFrame {
             val type = when (frameType) {
                 in 0 .. 63    -> SAME_FRAME
                 in 64 .. 127  -> SAME_LOCALS_1_STACK_ITEM_FRAME
-                247           -> SAME_LOCALS_1_STACK_ITEM_EXTENDED_FRAME
+                247           -> SAME_LOCALS_1_STACK_ITEM_FRAME_EXTENDED
                 in 248 .. 250 -> CHOP_FRAME
-                251           -> SAME_EXTENDED_FRAME
+                251           -> SAME_FRAME_EXTENDED
                 in 252 .. 254 -> APPEND_FRAME
                 255           -> FULL_FRAME
                 else -> error("unexpected frameType '$frameType'")

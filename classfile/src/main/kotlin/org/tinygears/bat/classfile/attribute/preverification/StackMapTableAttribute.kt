@@ -56,6 +56,14 @@ data class StackMapTableAttribute
         return frameEntries.iterator()
     }
 
+    internal fun clear() {
+        frameEntries.clear()
+    }
+
+    internal fun add(frame: StackMapFrame) {
+        frameEntries.add(frame)
+    }
+
     @Throws(IOException::class)
     override fun readAttributeData(input: ClassDataInput, length: Int) {
         frameEntries = input.readContentList(StackMapFrame.Companion::read)
