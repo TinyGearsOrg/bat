@@ -16,6 +16,12 @@
 package org.tinygears.bat.util
 
 interface Logger {
+    val isTraceEnabled: Boolean
+    val isDebugEnabled: Boolean
+    val isInfoEnabled:  Boolean
+    val isWarnEnabled:  Boolean
+    val isErrorEnabled: Boolean
+
     fun trace(obj: Object)
     fun trace(msg: String)
     fun trace(msg: () -> String)

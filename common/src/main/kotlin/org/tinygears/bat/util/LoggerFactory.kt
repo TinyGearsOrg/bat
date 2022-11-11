@@ -33,6 +33,17 @@ object LoggerFactory {
 }
 
 private object NopLogger: Logger {
+    override val isTraceEnabled: Boolean
+        get() = false
+    override val isDebugEnabled: Boolean
+        get() = false
+    override val isInfoEnabled: Boolean
+        get() = false
+    override val isWarnEnabled: Boolean
+        get() = false
+    override val isErrorEnabled: Boolean
+        get() = false
+
     override fun trace(obj: Object) {}
     override fun trace(msg: String) {}
     override fun trace(msg: () -> String) {}
@@ -56,11 +67,11 @@ private object NopLogger: Logger {
 
 private class ConsoleLogger constructor(private val loggingClass: String, minimumLevel: LogLevel): Logger {
 
-    private val isTraceEnabled = minimumLevel == LogLevel.TRACE
-    private val isDebugEnabled = minimumLevel <= LogLevel.DEBUG
-    private val isInfoEnabled  = minimumLevel <= LogLevel.INFO
-    private val isWarnEnabled  = minimumLevel <= LogLevel.WARN
-    private val isErrorEnabled = minimumLevel <= LogLevel.ERROR
+    override val isTraceEnabled = minimumLevel == LogLevel.TRACE
+    override val isDebugEnabled = minimumLevel <= LogLevel.DEBUG
+    override val isInfoEnabled  = minimumLevel <= LogLevel.INFO
+    override val isWarnEnabled  = minimumLevel <= LogLevel.WARN
+    override val isErrorEnabled = minimumLevel <= LogLevel.ERROR
 
     override fun trace(obj: Object) {
         if (isTraceEnabled) {
