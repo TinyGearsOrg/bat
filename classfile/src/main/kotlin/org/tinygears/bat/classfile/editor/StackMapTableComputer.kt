@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *  Copyright (c) 2022 Thomas Neidhart.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,10 +21,16 @@ import org.tinygears.bat.classfile.attribute.preverification.*
 import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.classfile.instruction.JvmInstruction
 import org.tinygears.bat.classfile.util.getLoggerFor
-import org.tinygears.bat.classfile.verifier.*
+import org.tinygears.bat.classfile.evaluation.*
 import org.tinygears.bat.util.Logger
 import org.tinygears.bat.util.LoggerFactory
 
+/**
+ * A [FrameProcessor] to compute the necessary [StackMapFrame] entries for the
+ * visited code fragments.
+ *
+ * TODO: currently there is no liveliness analysis for variables.
+ */
 internal class StackMapTableComputer constructor(private val classFile: ClassFile,
                                                  private val method:    Method): FrameProcessor {
     private val logger: Logger = LoggerFactory.getLoggerFor(StackMapTableComputer::class.java, classFile, method)

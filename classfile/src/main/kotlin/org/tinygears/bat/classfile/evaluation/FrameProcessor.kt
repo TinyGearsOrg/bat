@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.tinygears.bat.classfile.verifier
+package org.tinygears.bat.classfile.evaluation
 
 import org.tinygears.bat.classfile.instruction.JvmInstruction
 

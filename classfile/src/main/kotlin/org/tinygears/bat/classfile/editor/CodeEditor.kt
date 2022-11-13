@@ -25,7 +25,7 @@ import org.tinygears.bat.classfile.instruction.JvmInstruction
 import org.tinygears.bat.classfile.instruction.editor.InstructionWriter
 import org.tinygears.bat.classfile.instruction.editor.LabelInstruction
 import org.tinygears.bat.classfile.instruction.editor.OffsetMap
-import org.tinygears.bat.classfile.verifier.CodeAnalyzer
+import org.tinygears.bat.classfile.evaluation.CodeAnalyzer
 
 class CodeEditor private constructor(private val classEditor:   ClassEditor,
                                      private val method:        Method,

@@ -132,7 +132,6 @@ internal class CodeAssembler constructor(private val method:      Method,
         }
 
         codeEditor.finishEditing()
-
         debugStateComposer.finish(codeOffset)
     }
 }

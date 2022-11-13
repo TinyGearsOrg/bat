@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2020-2022 Thomas Neidhart.
+ *  Copyright (c) 2022 Thomas Neidhart.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,9 +16,13 @@
 package org.tinygears.bat.classfile.editor
 
 import org.tinygears.bat.classfile.instruction.JvmInstruction
-import org.tinygears.bat.classfile.verifier.Frame
-import org.tinygears.bat.classfile.verifier.FrameProcessor
+import org.tinygears.bat.classfile.evaluation.Frame
+import org.tinygears.bat.classfile.evaluation.FrameProcessor
 
+/**
+ * A [FrameProcessor] to compute the maximum required stack size for the
+ * visited code fragments.
+ */
 internal class StackSizeComputer: FrameProcessor {
     var maxStackSize: Int = 0
         private set
