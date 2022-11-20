@@ -19,10 +19,11 @@ package org.tinygears.bat.classfile.instruction
 import org.tinygears.bat.util.toHexStringWithPrefix
 
 enum class JvmOpCode constructor(
-            val value:    Int,
-            val mnemonic: String,
-            val length:   Int = 1,
-    private val supplier: InstructionSupplier?) {
+            val value:           Int,
+            val mnemonic:        String,
+            val length:          Int = 1,
+    private val supplier:        InstructionSupplier?,
+            val canonicalOpCode: JvmOpCode? = null) {
 
     // array instructions
 
@@ -114,10 +115,10 @@ enum class JvmOpCode constructor(
     IFNULL         (0xc6, "ifnull",    3, { opCode, _ -> BranchInstruction.create(opCode) }),
 
     GOTO           (0xa7, "goto",      3, { opCode, _ -> BranchInstruction.create(opCode) }),
-    GOTO_W         (0xc8, "goto_w",    5, { opCode, _ -> BranchInstruction.create(opCode) }),
+    GOTO_W         (0xc8, "goto_w",    5, { opCode, _ -> BranchInstruction.create(opCode) }, GOTO),
 
     JSR            (0x8a, "jsr",       3, { opCode, _ -> BranchInstruction.create(opCode) }),
-    JSR_W          (0xc9, "jsr_w",     5, { opCode, _ -> BranchInstruction.create(opCode) }),
+    JSR_W          (0xc9, "jsr_w",     5, { opCode, _ -> BranchInstruction.create(opCode) }, JSR),
 
     // compare instructions
 
@@ -201,64 +202,64 @@ enum class JvmOpCode constructor(
     // variable instructions
 
     ALOAD          (0x19, "aload",    2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    ALOAD_0        (0x2a, "aload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ALOAD_1        (0x2b, "aload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ALOAD_2        (0x2c, "aload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ALOAD_3        (0x2d, "aload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    ALOAD_0        (0x2a, "aload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ALOAD),
+    ALOAD_1        (0x2b, "aload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ALOAD),
+    ALOAD_2        (0x2c, "aload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ALOAD),
+    ALOAD_3        (0x2d, "aload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ALOAD),
 
     ASTORE         (0x3a, "astore",   2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    ASTORE_0       (0x4b, "astore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ASTORE_1       (0x4c, "astore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ASTORE_2       (0x4d, "astore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ASTORE_3       (0x4e, "astore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    ASTORE_0       (0x4b, "astore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ASTORE),
+    ASTORE_1       (0x4c, "astore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ASTORE),
+    ASTORE_2       (0x4d, "astore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ASTORE),
+    ASTORE_3       (0x4e, "astore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ASTORE),
 
     DLOAD          (0x18, "dload",    2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    DLOAD_0        (0x26, "dload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    DLOAD_1        (0x27, "dload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    DLOAD_2        (0x28, "dload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    DLOAD_3        (0x29, "dload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    DLOAD_0        (0x26, "dload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }, DLOAD),
+    DLOAD_1        (0x27, "dload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }, DLOAD),
+    DLOAD_2        (0x28, "dload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }, DLOAD),
+    DLOAD_3        (0x29, "dload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }, DLOAD),
 
     DSTORE         (0x39, "dstore",   2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    DSTORE_0       (0x47, "dstore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    DSTORE_1       (0x48, "dstore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    DSTORE_2       (0x49, "dstore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    DSTORE_3       (0x4a, "dstore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    DSTORE_0       (0x47, "dstore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }, DSTORE),
+    DSTORE_1       (0x48, "dstore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }, DSTORE),
+    DSTORE_2       (0x49, "dstore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }, DSTORE),
+    DSTORE_3       (0x4a, "dstore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }, DSTORE),
 
     FLOAD          (0x17, "fload",    2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    FLOAD_0        (0x22, "fload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    FLOAD_1        (0x23, "fload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    FLOAD_2        (0x24, "fload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    FLOAD_3        (0x25, "fload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    FLOAD_0        (0x22, "fload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }, FLOAD),
+    FLOAD_1        (0x23, "fload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }, FLOAD),
+    FLOAD_2        (0x24, "fload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }, FLOAD),
+    FLOAD_3        (0x25, "fload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }, FLOAD),
 
     FSTORE         (0x38, "fstore",   2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    FSTORE_0       (0x43, "fstore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    FSTORE_1       (0x44, "fstore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    FSTORE_2       (0x45, "fstore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    FSTORE_3       (0x46, "fstore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    FSTORE_0       (0x43, "fstore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }, FSTORE),
+    FSTORE_1       (0x44, "fstore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }, FSTORE),
+    FSTORE_2       (0x45, "fstore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }, FSTORE),
+    FSTORE_3       (0x46, "fstore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }, FSTORE),
 
     ILOAD          (0x15, "iload",    2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    ILOAD_0        (0x1a, "iload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ILOAD_1        (0x1b, "iload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ILOAD_2        (0x1c, "iload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ILOAD_3        (0x1d, "iload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    ILOAD_0        (0x1a, "iload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ILOAD),
+    ILOAD_1        (0x1b, "iload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ILOAD),
+    ILOAD_2        (0x1c, "iload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ILOAD),
+    ILOAD_3        (0x1d, "iload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }, ILOAD),
 
     ISTORE         (0x36, "istore",   2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    ISTORE_0       (0x3b, "istore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ISTORE_1       (0x3c, "istore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ISTORE_2       (0x3d, "istore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    ISTORE_3       (0x3e, "istore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    ISTORE_0       (0x3b, "istore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ISTORE),
+    ISTORE_1       (0x3c, "istore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ISTORE),
+    ISTORE_2       (0x3d, "istore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ISTORE),
+    ISTORE_3       (0x3e, "istore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }, ISTORE),
 
     LLOAD          (0x16, "lload",    2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    LLOAD_0        (0x1e, "lload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    LLOAD_1        (0x1f, "lload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    LLOAD_2        (0x20, "lload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    LLOAD_3        (0x21, "lload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    LLOAD_0        (0x1e, "lload_0",  1, { opCode, _    -> VariableInstruction.create(opCode) }, LLOAD),
+    LLOAD_1        (0x1f, "lload_1",  1, { opCode, _    -> VariableInstruction.create(opCode) }, LLOAD),
+    LLOAD_2        (0x20, "lload_2",  1, { opCode, _    -> VariableInstruction.create(opCode) }, LLOAD),
+    LLOAD_3        (0x21, "lload_3",  1, { opCode, _    -> VariableInstruction.create(opCode) }, LLOAD),
 
     LSTORE         (0x37, "lstore",   2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
-    LSTORE_0       (0x3f, "lstore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    LSTORE_1       (0x40, "lstore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    LSTORE_2       (0x41, "lstore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
-    LSTORE_3       (0x42, "lstore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }),
+    LSTORE_0       (0x3f, "lstore_0", 1, { opCode, _    -> VariableInstruction.create(opCode) }, LSTORE),
+    LSTORE_1       (0x40, "lstore_1", 1, { opCode, _    -> VariableInstruction.create(opCode) }, LSTORE),
+    LSTORE_2       (0x41, "lstore_2", 1, { opCode, _    -> VariableInstruction.create(opCode) }, LSTORE),
+    LSTORE_3       (0x42, "lstore_3", 1, { opCode, _    -> VariableInstruction.create(opCode) }, LSTORE),
 
     RET            (0xa9, "ret",      2, { opCode, wide -> VariableInstruction.create(opCode, wide) }),
 
@@ -288,7 +289,7 @@ enum class JvmOpCode constructor(
     // literal constant instructions
 
     LDC            (0x12, "ldc",    2, { opCode, _ -> LiteralConstantInstruction.create(opCode) }),
-    LDC_W          (0x13, "ldc_w",  3, { opCode, _ -> LiteralConstantInstruction.create(opCode) }),
+    LDC_W          (0x13, "ldc_w",  3, { opCode, _ -> LiteralConstantInstruction.create(opCode) }, LDC),
     LDC2_W         (0x14, "ldc2_w", 3, { opCode, _ -> LiteralConstantInstruction.create(opCode) }),
 
     // uncategorized instructions

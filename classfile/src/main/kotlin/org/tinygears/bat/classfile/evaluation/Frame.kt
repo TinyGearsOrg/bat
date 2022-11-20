@@ -17,16 +17,22 @@ package org.tinygears.bat.classfile.evaluation
 
 import org.tinygears.bat.classfile.attribute.preverification.VerificationType
 import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
+import org.tinygears.bat.classfile.evaluation.value.ReferenceValue
+import org.tinygears.bat.classfile.evaluation.value.TopValue
+import org.tinygears.bat.classfile.evaluation.value.UninitializedReferenceValue
+import org.tinygears.bat.classfile.evaluation.value.Value
 import org.tinygears.bat.util.mutableListOfCapacity
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
-class Frame private constructor(private val _variables: MutableList<VariableType> = mutableListOfCapacity(0),
-                                private val _stack:     MutableList<VariableType> = mutableListOfCapacity(0)) {
+class Frame private constructor(private val _variables: MutableList<Value>         = mutableListOfCapacity(0),
+                                private val _stack:     MutableList<Value>         = mutableListOfCapacity(0),
+                                private val _alive:     MutableList<AtomicBoolean> = mutableListOfCapacity(0)) {
 
-    val variables: List<VariableType>
+    val variables: List<Value>
         get() = _variables
 
-    val stack: List<VariableType>
+    val stack: List<Value>
         get() = _stack
 
     val stackSize: Int
@@ -47,15 +53,29 @@ class Frame private constructor(private val _variables: MutableList<VariableType
             return count
         }
 
+    val aliveVariableCount: Int
+        get() {
+            var i = 0
+            var count = 0
+            while (i < variables.size) {
+                val type = variables[i]
+                if (_alive[i].get()) {
+                    count++
+                }
+                i += type.operandSize
+            }
+            return count
+        }
+
     fun copy(): Frame {
-        return Frame(variables.toMutableList(), stack.toMutableList())
+        return Frame(variables.toMutableList(), stack.toMutableList(), _alive.toMutableList())
     }
 
-    fun pop(): VariableType {
+    fun pop(): Value {
         return _stack.removeLast()
     }
 
-    fun peek(): VariableType {
+    fun peek(): Value {
         return _stack.last()
     }
 
@@ -65,64 +85,82 @@ class Frame private constructor(private val _variables: MutableList<VariableType
         }
     }
 
-    fun push(type: VariableType) {
-        _stack.add(type)
+    fun push(value: Value) {
+        _stack.add(value)
     }
 
     fun clearStack() {
         _stack.clear()
     }
 
-    fun load(variable: Int): VariableType {
+    fun isAlive(variable: Int): Boolean {
+        return _alive[variable].get()
+    }
+
+    fun load(variable: Int): Value {
         val value = variables[variable]
-        check(value !is TopType)
+        check(value !is TopValue) { "trying to load a TopValue at variableIndex $variable" }
         return value
     }
 
-    fun store(variable: Int, type: VariableType) {
-        val maxVariableIndex = if (type.isCategory2) variable + 1 else variable
+    fun store(variable: Int, value: Value) {
+        val maxVariableIndex = if (value.isCategory2) variable + 1 else variable
 
         ensureVariableCapacity(maxVariableIndex)
-        _variables[variable] = type
+        _variables[variable] = value
+    }
+
+    internal fun variableRead(variable: Int) {
+        _alive[variable].set(true)
+    }
+
+    internal fun resetVariableLiveness(variable: Int) {
+        _alive[variable] = AtomicBoolean(false)
+    }
+
+    internal fun resetVariableLiveness() {
+        for (i in _alive.indices) {
+            _alive[i] = AtomicBoolean(_alive[i].get())
+        }
+    }
+
+    internal fun mergeLiveness(other: Frame) {
+        for (i in _alive.indices) {
+            if (i in other._alive.indices) {
+                _alive[i].set(_alive[i].get() or other._alive[i].get())
+            }
+        }
+    }
+
+    internal fun variableWritten(variable: Int) {
+        val maxVariableIndex = if (_variables[variable].isCategory2) variable + 1 else variable
+
+        ensureAliveCapacity(maxVariableIndex)
+        resetVariableLiveness(variable)
     }
 
     private fun ensureVariableCapacity(capacity: Int) {
         while (capacity >= variables.size) {
-            _variables.add(TopType)
+            _variables.add(TopValue)
         }
     }
 
-    internal fun referenceInitialized(reference: VariableType) {
-        require(reference is UninitializedType ||
-                reference is UninitializedThisType)
+    private fun ensureAliveCapacity(capacity: Int) {
+        while (capacity >= _alive.size) {
+            _alive.add(AtomicBoolean(false))
+        }
+    }
 
-        if (reference is UninitializedType) {
-            val initializedReference = JavaReferenceType.of(reference.classType)
-
-            for (i in _variables.indices) {
-                if (_variables[i] == reference) {
-                    _variables[i] = initializedReference
-                }
+    internal fun referenceInitialized(reference: Value, initializedReference: Value) {
+        for (i in _variables.indices) {
+            if (_variables[i] == reference) {
+                _variables[i] = initializedReference
             }
+        }
 
-            for (i in _stack.indices) {
-                if (_stack[i] == reference) {
-                    _stack[i] = initializedReference
-                }
-            }
-        } else if (reference is UninitializedThisType) {
-            val initializedReference = JavaReferenceType.of(reference.classType)
-
-            for (i in _variables.indices) {
-                if (_variables[i] is UninitializedThisType) {
-                    _variables[i] = initializedReference
-                }
-            }
-
-            for (i in _stack.indices) {
-                if (_stack[i] is UninitializedThisType) {
-                    _stack[i] = initializedReference
-                }
+        for (i in _stack.indices) {
+            if (_stack[i] == reference) {
+                _stack[i] = initializedReference
             }
         }
     }
@@ -143,9 +181,11 @@ class Frame private constructor(private val _variables: MutableList<VariableType
 
     override fun toString(): String {
         return buildString {
-            append(_variables.joinToString(separator = ", ", prefix = "{", postfix = "}", transform = { it?.name ?: "" }))
+            append(_variables.joinToString(separator = ", ", prefix = "{", postfix = "}"))
             append(" ")
-            append(_stack.joinToString(separator = ", ", prefix = "{", postfix = "}", transform = { it.name }))
+            append(_stack.joinToString(separator = ", ", prefix = "{", postfix = "}"))
+            append(" ")
+            append(_alive.joinToString(separator = ", ", prefix = "{", postfix = "}"))
         }
     }
 
@@ -156,13 +196,13 @@ class Frame private constructor(private val _variables: MutableList<VariableType
     }
 }
 
-fun List<VariableType>.toVerificationTypeList(constantPoolEditor: ConstantPoolEditor): List<VerificationType> {
+fun List<Value>.toVerificationTypeList(constantPoolEditor: ConstantPoolEditor): List<VerificationType> {
     val result = mutableListOf<VerificationType>()
     var i = 0
     while (i < size) {
-        val type = this[i]
-        result.add(type.toVerificationType(constantPoolEditor))
-        i += type.operandSize
+        val value = this[i]
+        result.add(value.toVerificationType(constantPoolEditor))
+        i += value.operandSize
     }
     return result
 }

@@ -25,15 +25,15 @@ import org.tinygears.bat.classfile.constant.DoubleConstant
 import org.tinygears.bat.classfile.constant.FloatConstant
 import org.tinygears.bat.classfile.constant.LongConstant
 import org.tinygears.bat.classfile.constant.Utf8Constant
+import org.tinygears.bat.classfile.evaluation.value.ReferenceValue
+import org.tinygears.bat.classfile.evaluation.value.UnknownValueFactory
+import org.tinygears.bat.classfile.evaluation.value.Value
+import org.tinygears.bat.classfile.evaluation.value.ValueFactory
 import org.tinygears.bat.classfile.instruction.*
 import org.tinygears.bat.classfile.instruction.JvmOpCode.*
 import org.tinygears.bat.classfile.instruction.visitor.InstructionVisitor
 import org.tinygears.bat.classfile.util.getLoggerFor
-import org.tinygears.bat.util.Logger
-import org.tinygears.bat.util.LoggerFactory
-import org.tinygears.bat.util.JAVA_LANG_STRING_TYPE
-import org.tinygears.bat.util.asJvmType
-import org.tinygears.bat.util.parseDescriptorToJvmTypes
+import org.tinygears.bat.util.*
 import kotlin.collections.ArrayDeque
 
 class CodeAnalyzer private constructor(private val processors: List<FrameProcessor> = emptyList()): MethodAttributeVisitor {
@@ -44,10 +44,13 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
     private var framesBefore: Array<Frame?> = Array(0) { null }
     private var framesAfter:  Array<Frame?> = Array(0) { null }
 
-    private val blockAnalyser = BlockAnalyser()
-    private val frameUpdater  = FrameUpdater()
+    private val blockAnalyser    = BlockAnalyser()
+    private val frameUpdater     = FrameUpdater()
+    private var livenessAnalyser = LivenessAnalyser()
 
     private var processingQueue: ArrayDeque<Pair<Int, () -> Unit>> = ArrayDeque()
+
+    private val valueFactory: ValueFactory = UnknownValueFactory()
 
     private lateinit var logger: Logger
 
@@ -72,6 +75,8 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
     private fun evaluateCode(classFile: ClassFile, method: Method, code: CodeAttribute) {
         val initialFrame = setupInitialFrame(classFile, method)
 
+        livenessAnalyser = LivenessAnalyser()
+
         for (exceptionEntry in code.exceptionTable.asReversed()) {
             enqueueExceptionHandler(classFile, exceptionEntry)
         }
@@ -83,9 +88,12 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             if (!evaluated[nextBlockOffset]) {
                 // TODO: if the block was already evaluated, check if the stack is consistent
                 setupFrame()
+                framesBefore[nextBlockOffset]?.resetVariableLiveness()
                 evaluateBasicBlock(classFile, method, code, nextBlockOffset)
             }
         }
+
+        livenessAnalyser.finish()
 
         // after all reachable code has been evaluated, call processors with computed frames.
         for (offset in evaluated.indices) {
@@ -114,7 +122,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 exceptionEntry.getCaughtExceptionClassName(classFile)!!.toJvmType()
             }
 
-            frame.push(VariableType.of(exceptionType))
+            frame.push(createValueFor(exceptionType))
             framesBefore[handlerPC] = frame
         }
 
@@ -146,15 +154,21 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
         if (!method.isStatic) {
             val classType = classFile.className.toJvmType()
             if (method.getName(classFile) == "<init>") {
-                frame.store(variableIndex++, UninitializedThisType.of(classType))
+                frame.store(variableIndex, valueFactory.createUninitializedReferenceValue(classType, -1))
+                frame.variableWritten(variableIndex)
             } else {
-                frame.store(variableIndex++, JavaReferenceType.of(classType))
+                frame.store(variableIndex, valueFactory.createReferenceValue(classType))
+                frame.variableWritten(variableIndex)
             }
+            variableIndex++
         }
 
         for (parameterType in parameterTypes) {
-            val verificationType = VariableType.of(parameterType)
-            frame.store(variableIndex++, verificationType)
+            val verificationType = createValueFor(parameterType)
+            frame.store(variableIndex, verificationType)
+            frame.variableWritten(variableIndex)
+
+            variableIndex++
             if (verificationType.isCategory2) {
                 variableIndex++
             }
@@ -173,6 +187,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             val instruction = JvmInstruction.create(attribute.code, currentOffset)
 
             instruction.accept(classFile, method, attribute, currentOffset, frameUpdater)
+            instruction.accept(classFile, method, attribute, currentOffset, livenessAnalyser)
 
             logger.trace { "$currentOffset: $instruction" }
             logger.trace { "    before: ${framesBefore[currentOffset]}" }
@@ -209,7 +224,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 NOP         -> {}
 
-                ACONST_NULL -> frameAfter.push(NullReference)
+                ACONST_NULL -> frameAfter.push(valueFactory.createNullReferenceValue())
 
                 ATHROW      -> {
                     frameAfter.clearStack()
@@ -333,10 +348,9 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             val frameBefore = framesBefore[offset]
             val frameAfter  = frameBefore!!.copy()
 
-            val mnemonic = instruction.mnemonic
-            if (mnemonic.contains("load")) {
+            if (instruction.isLoadInstruction) {
                 frameAfter.push(frameAfter.load(instruction.variable))
-            } else if (mnemonic.contains("store")) {
+            } else if (instruction.isStoreInstruction) {
                 frameAfter.store(instruction.variable, frameAfter.pop())
             } else {
                 TODO("implement ${instruction.opCode}")
@@ -350,11 +364,11 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             val frameAfter  = frameBefore!!.copy()
 
             when (instruction.getConstant(classFile)) {
-                is DoubleConstant -> frameAfter.push(DoubleType)
-                is LongConstant   -> frameAfter.push(LongType)
-                is FloatConstant  -> frameAfter.push(FloatType)
-                is Utf8Constant   -> frameAfter.push(JavaReferenceType.of(JAVA_LANG_STRING_TYPE))
-                else              -> frameAfter.push(IntegerType)
+                is DoubleConstant -> frameAfter.push(valueFactory.createDoubleValue())
+                is LongConstant   -> frameAfter.push(valueFactory.createLongValue())
+                is FloatConstant  -> frameAfter.push(valueFactory.createFloatValue())
+                is Utf8Constant   -> frameAfter.push(valueFactory.createReferenceValue(JAVA_LANG_STRING_TYPE))
+                else              -> frameAfter.push(valueFactory.createIntegerValue())
             }
 
             framesAfter[offset] = frameAfter
@@ -366,16 +380,16 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
             when (instruction.opCode) {
                 DCONST_0,
-                DCONST_1 -> frameAfter.push(DoubleType)
+                DCONST_1 -> frameAfter.push(valueFactory.createDoubleValue())
 
                 FCONST_0,
                 FCONST_1,
-                FCONST_2 -> frameAfter.push(FloatType)
+                FCONST_2 -> frameAfter.push(valueFactory.createFloatValue())
 
                 LCONST_0,
-                LCONST_1 -> frameAfter.push(LongType)
+                LCONST_1 -> frameAfter.push(valueFactory.createLongValue())
 
-                else     -> frameAfter.push(IntegerType)
+                else     -> frameAfter.push(valueFactory.createIntegerValue())
             }
 
             framesAfter[offset] = frameAfter
@@ -388,7 +402,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 ARRAYLENGTH -> {
                     frameAfter.pop()
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
 
                 AASTORE,
@@ -403,9 +417,9 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 AALOAD -> {
                     frameAfter.pop()
                     val arrayType = frameAfter.pop()
-                    check(arrayType is JavaReferenceType && arrayType.classType.isArrayType)
-                    val componentType = arrayType.classType.componentType
-                    frameAfter.push(JavaReferenceType.of(componentType))
+                    check(arrayType is ReferenceValue && arrayType.type.isArrayType)
+                    val componentType = arrayType.type.componentType
+                    frameAfter.push(valueFactory.createReferenceValue(componentType))
                 }
 
                 BALOAD,
@@ -413,22 +427,22 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 CALOAD,
                 IALOAD  -> {
                     frameAfter.pop(2)
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
 
                 FALOAD -> {
                     frameAfter.pop(2)
-                    frameAfter.push(FloatType)
+                    frameAfter.push(valueFactory.createFloatValue())
                 }
 
                 DALOAD -> {
                     frameAfter.pop(2)
-                    frameAfter.push(DoubleType)
+                    frameAfter.push(valueFactory.createDoubleValue())
                 }
 
                 LALOAD -> {
                     frameAfter.pop(2)
-                    frameAfter.push(LongType)
+                    frameAfter.push(valueFactory.createLongValue())
                 }
 
                 else -> TODO("implement ${instruction.opCode}")
@@ -444,7 +458,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 NEWARRAY -> {
                     frameAfter.pop()
-                    frameAfter.push(JavaReferenceType.of(instruction.arrayType))
+                    frameAfter.push(valueFactory.createReferenceValue(instruction.arrayType))
                 }
 
                 else -> TODO("implement ${instruction.opCode}")
@@ -463,13 +477,13 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 ANEWARRAY -> {
                     frameAfter.pop()
-                    frameAfter.push(JavaReferenceType.of(arrayType))
+                    frameAfter.push(valueFactory.createReferenceValue(arrayType))
                 }
 
                 MULTIANEWARRAY -> {
                     val dimensions = instruction.dimension
                     frameAfter.pop(dimensions)
-                    frameAfter.push(JavaReferenceType.of(instruction.getClassName(classFile).toJvmType()))
+                    frameAfter.push(valueFactory.createReferenceValue(instruction.getClassName(classFile).toJvmType()))
                 }
 
                 else -> error("unexpected opcode '${instruction.opCode}'")
@@ -485,14 +499,14 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             val classType = instruction.getClassName(classFile).toJvmType()
 
             when (instruction.opCode) {
-                NEW        -> frameAfter.push(UninitializedType.of(classType, offset))
+                NEW        -> frameAfter.push(valueFactory.createUninitializedReferenceValue(classType, offset))
                 CHECKCAST  -> {
                     frameAfter.pop()
-                    frameAfter.push(JavaReferenceType.of(classType))
+                    frameAfter.push(valueFactory.createReferenceValue(classType))
                 }
                 INSTANCEOF -> {
                     frameAfter.pop()
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
                 else       -> error("unexpected opcode '${instruction.opCode}'")
             }
@@ -509,11 +523,11 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             when (instruction.opCode) {
                 GETFIELD -> {
                     frameAfter.pop()
-                    frameAfter.push(VariableType.of(fieldType))
+                    frameAfter.push(createValueFor(fieldType))
                 }
 
                 GETSTATIC -> {
-                    frameAfter.push(VariableType.of(fieldType))
+                    frameAfter.push(createValueFor(fieldType))
                 }
 
                 PUTFIELD  -> frameAfter.pop(2)
@@ -538,7 +552,8 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                     val isInitializer = instruction.getMethodName(classFile) == "<init>"
                     if (isInitializer) {
                         val objectReference = frameAfter.pop()
-                        frameAfter.referenceInitialized(objectReference)
+                        check(objectReference is ReferenceValue)
+                        frameAfter.referenceInitialized(objectReference, valueFactory.createReferenceValue(objectReference.type))
                     } else {
                         frameAfter.pop()
                     }
@@ -548,7 +563,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
 
             if (!returnType.isVoidType) {
-                frameAfter.push(VariableType.of(returnType))
+                frameAfter.push(createValueFor(returnType))
             }
 
             framesAfter[offset] = frameAfter
@@ -563,7 +578,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             frameAfter.pop()
 
             if (!returnType.isVoidType) {
-                frameAfter.push(VariableType.of(returnType))
+                frameAfter.push(createValueFor(returnType))
             }
 
             framesAfter[offset] = frameAfter
@@ -577,7 +592,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             frameAfter.pop(parameterTypes.size)
 
             if (!returnType.isVoidType) {
-                frameAfter.push(VariableType.of(returnType))
+                frameAfter.push(createValueFor(returnType))
             }
 
             framesAfter[offset] = frameAfter
@@ -628,28 +643,28 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 I2S,
                 I2C -> {
                     frameAfter.pop()
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
 
                 D2L,
                 F2L,
                 I2L -> {
                     frameAfter.pop()
-                    frameAfter.push(LongType)
+                    frameAfter.push(valueFactory.createLongValue())
                 }
 
                 L2D,
                 F2D,
                 I2D -> {
                     frameAfter.pop()
-                    frameAfter.push(DoubleType)
+                    frameAfter.push(valueFactory.createDoubleValue())
                 }
 
                 I2F,
                 D2F,
                 L2F -> {
                     frameAfter.pop()
-                    frameAfter.push(FloatType)
+                    frameAfter.push(valueFactory.createFloatValue())
                 }
 
                 else -> error("implement ${instruction.opCode}")
@@ -669,7 +684,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 DCMPL,
                 LCMP -> {
                     frameAfter.pop(2)
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
 
                 else -> error("implement ${instruction.opCode}")
@@ -695,22 +710,22 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 IMUL,
                 IDIV, -> {
                     frameAfter.pop(2)
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
 
                 INEG -> {
                     frameAfter.pop()
-                    frameAfter.push(IntegerType)
+                    frameAfter.push(valueFactory.createIntegerValue())
                 }
 
                 LNEG -> {
                     frameAfter.pop()
-                    frameAfter.push(LongType)
+                    frameAfter.push(valueFactory.createLongValue())
                 }
 
                 DNEG -> {
                     frameAfter.pop()
-                    frameAfter.push(DoubleType)
+                    frameAfter.push(valueFactory.createDoubleValue())
                 }
 
                 LOR,
@@ -725,7 +740,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 LREM,
                 LSHR -> {
                     frameAfter.pop(2)
-                    frameAfter.push(LongType)
+                    frameAfter.push(valueFactory.createLongValue())
                 }
 
                 FADD,
@@ -734,7 +749,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 FREM,
                 FDIV -> {
                     frameAfter.pop(2)
-                    frameAfter.push(FloatType)
+                    frameAfter.push(valueFactory.createFloatValue())
                 }
 
                 DSUB,
@@ -743,7 +758,7 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
                 DREM,
                 DDIV -> {
                     frameAfter.pop(2)
-                    frameAfter.push(DoubleType)
+                    frameAfter.push(valueFactory.createDoubleValue())
                 }
 
                 else -> error("implement ${instruction.opCode}")
@@ -775,6 +790,26 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
             }
 
             framesAfter[offset] = frameAfter
+        }
+    }
+
+    fun createValueFor(jvmType: JvmType): Value {
+        return if (jvmType.isReferenceType) {
+            valueFactory.createReferenceValue(jvmType)
+        } else if (jvmType.isPrimitiveType) {
+            when (jvmType.type) {
+                BYTE_TYPE,
+                SHORT_TYPE,
+                CHAR_TYPE,
+                BOOLEAN_TYPE,
+                INT_TYPE    -> valueFactory.createIntegerValue()
+                FLOAT_TYPE  -> valueFactory.createFloatValue()
+                LONG_TYPE   -> valueFactory.createLongValue()
+                DOUBLE_TYPE -> valueFactory.createDoubleValue()
+                else        -> error("unexpected primitive type '$jvmType'")
+            }
+        } else {
+            error("unexpected type '$jvmType'")
         }
     }
 
@@ -824,6 +859,50 @@ class CodeAnalyzer private constructor(private val processors: List<FrameProcess
 
         override fun visitReturnInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: ReturnInstruction) {
             setStatusFlag(offset, BLOCK_EXIT)
+        }
+    }
+
+    inner class LivenessAnalyser: InstructionVisitor {
+        private var postProcessing = mutableListOf<Pair<Int, Int>>()
+
+        fun finish() {
+            for ((sourceOffset, targetOffset) in postProcessing) {
+                logger.debug("postprocessing: $sourceOffset -> $targetOffset")
+                framesAfter[targetOffset]?.mergeLiveness(framesBefore[sourceOffset]!!)
+            }
+        }
+
+        override fun visitAnyInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: JvmInstruction) {}
+
+        override fun visitVariableInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: VariableInstruction) {
+            val frameBefore = framesBefore[offset]!!
+            val frameAfter  = framesAfter[offset]!!
+
+            if (instruction.isLoadInstruction) {
+                frameBefore.variableRead(instruction.variable)
+                frameAfter.resetVariableLiveness(instruction.variable)
+            } else if (instruction.isStoreInstruction) {
+                frameAfter.variableWritten(instruction.variable)
+            }
+        }
+
+        override fun visitBranchInstruction(classFile: ClassFile, method: Method, code: CodeAttribute, offset: Int, instruction: BranchInstruction) {
+            val targetOffset = offset + instruction.branchOffset
+            val nextOffset   = offset + instruction.getLength(offset)
+
+            val frameAfter = framesAfter[offset]!!
+
+            when (instruction.opCode) {
+                GOTO,
+                GOTO_W -> {
+                    postProcessing.add(Pair(targetOffset, offset))
+                }
+
+                else -> {
+                    postProcessing.add(Pair(nextOffset, offset))
+                    postProcessing.add(Pair(targetOffset, offset))
+                }
+            }
         }
     }
 

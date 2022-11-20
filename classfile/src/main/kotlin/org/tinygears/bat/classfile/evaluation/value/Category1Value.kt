@@ -13,10 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.tinygears.bat.classfile.evaluation
 
-import org.tinygears.bat.classfile.instruction.JvmInstruction
+package org.tinygears.bat.classfile.evaluation.value
 
-fun interface FrameProcessor {
-    fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
+interface Category1Value: Value {
+    override val isCategory1: Boolean
+        get() = true
+
+    override val isCategory2: Boolean
+        get() = false
+
+    override val operandSize: Int
+        get() = 1
 }

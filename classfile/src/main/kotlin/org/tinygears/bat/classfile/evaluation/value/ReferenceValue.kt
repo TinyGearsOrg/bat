@@ -13,10 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.tinygears.bat.classfile.evaluation
 
-import org.tinygears.bat.classfile.instruction.JvmInstruction
+package org.tinygears.bat.classfile.evaluation.value
 
-fun interface FrameProcessor {
-    fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
+import org.tinygears.bat.util.JvmType
+
+interface ReferenceValue: Category1Value {
+    val type: JvmType
+    val isNull: Boolean
 }

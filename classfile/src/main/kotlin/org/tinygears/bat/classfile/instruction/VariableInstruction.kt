@@ -19,6 +19,7 @@ package org.tinygears.bat.classfile.instruction
 import org.tinygears.bat.classfile.ClassFile
 import org.tinygears.bat.classfile.Method
 import org.tinygears.bat.classfile.attribute.CodeAttribute
+import org.tinygears.bat.classfile.instruction.JvmOpCode.*
 import org.tinygears.bat.classfile.instruction.editor.InstructionWriter
 import org.tinygears.bat.classfile.instruction.editor.OffsetMap
 import org.tinygears.bat.classfile.instruction.visitor.InstructionVisitor
@@ -33,6 +34,28 @@ open class VariableInstruction: JvmInstruction {
 
     var wide: Boolean
         private set
+
+    val isLoadInstruction: Boolean
+        get() =
+            when (canonicalOpCode) {
+                ILOAD,
+                LLOAD,
+                FLOAD,
+                DLOAD,
+                ALOAD -> true
+                else  -> false
+            }
+
+    val isStoreInstruction: Boolean
+        get() =
+            when (canonicalOpCode) {
+                ISTORE,
+                LSTORE,
+                FSTORE,
+                DSTORE,
+                ASTORE -> true
+                else   -> false
+            }
 
     protected constructor(opCode: JvmOpCode,
                           wide:   Boolean = false): super(opCode) {
@@ -75,7 +98,7 @@ open class VariableInstruction: JvmInstruction {
         if (!variableIsImplicit) {
             var currOffset = offset
             if (wide) {
-                writer.write(currOffset++, JvmOpCode.WIDE.value.toByte())
+                writer.write(currOffset++, WIDE.value.toByte())
             }
             writer.write(currOffset++, opCode.value.toByte())
             if (wide) {

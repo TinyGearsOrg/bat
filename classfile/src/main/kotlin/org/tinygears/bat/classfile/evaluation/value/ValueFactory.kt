@@ -13,10 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.tinygears.bat.classfile.evaluation
+package org.tinygears.bat.classfile.evaluation.value
 
-import org.tinygears.bat.classfile.instruction.JvmInstruction
+import org.tinygears.bat.util.JvmType
 
-fun interface FrameProcessor {
-    fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
+interface ValueFactory {
+    fun createIntegerValue(): Value
+    fun createLongValue(): Value
+    fun createDoubleValue(): Value
+    fun createFloatValue(): Value
+
+    fun createNullReferenceValue(): Value
+    fun createReferenceValue(type: JvmType): Value
+    fun createUninitializedReferenceValue(type: JvmType, offset: Int): Value
 }

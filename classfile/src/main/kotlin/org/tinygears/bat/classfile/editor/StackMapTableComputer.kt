@@ -22,6 +22,7 @@ import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 import org.tinygears.bat.classfile.instruction.JvmInstruction
 import org.tinygears.bat.classfile.util.getLoggerFor
 import org.tinygears.bat.classfile.evaluation.*
+import org.tinygears.bat.classfile.evaluation.value.Value
 import org.tinygears.bat.util.Logger
 import org.tinygears.bat.util.LoggerFactory
 
@@ -57,25 +58,30 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
 
             val currentFrame = frameBefore
 
+            logger.debug(currentFrame.toString())
+
             val (lastOffset, lastFrame) = lastOffsetFramePair
             val offsetDelta = if (frames.isEmpty()) { offset - lastOffset } else { offset - lastOffset - 1 }
 
+            val lastVariables    = trimNonAliveValues(lastFrame)
+            val currentVariables = trimNonAliveValues(currentFrame)
+
             var frame =
                 if (currentFrame.stackSize == 0) {
-                    if (currentFrame.variables == lastFrame.variables) {
+                    if (currentVariables == lastVariables) {
                         sameFrame(offsetDelta)
-                    } else if (currentFrame.variableCount > lastFrame.variableCount) {
-                        val lastVariables    = lastFrame.variables.toVerificationTypeList(constantPoolEditor)
-                        val currentVariables = currentFrame.variables.toVerificationTypeList(constantPoolEditor)
-                        appendFrame(offsetDelta, lastVariables, currentVariables)
-                    } else if (currentFrame.variableCount < lastFrame.variableCount) {
-                        val variables = currentFrame.variables.toVerificationTypeList(constantPoolEditor)
-                        chopFrame(offsetDelta, lastFrame.variableSize - currentFrame.variableSize, variables)
+                    } else if (currentVariables.size > lastVariables.size) {
+                        appendFrame(offsetDelta,
+                                    lastVariables.toVerificationTypeList(constantPoolEditor),
+                                    currentVariables.toVerificationTypeList(constantPoolEditor))
+                    } else if (currentFrame.aliveVariableCount < lastFrame.aliveVariableCount) {
+                        val variables = currentVariables.toVerificationTypeList(constantPoolEditor)
+                        chopFrame(offsetDelta, lastVariables.size - currentVariables.size, variables)
                     } else {
                         null
                     }
                 } else if (currentFrame.stackSize == 1) {
-                    if (currentFrame.variables == lastFrame.variables) {
+                    if (currentVariables == lastVariables) {
                         sameLocalsOneStackFrame(offsetDelta, currentFrame.peek().toVerificationType(constantPoolEditor))
                     } else {
                         null
@@ -85,9 +91,8 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
                 }
 
             if (frame == null) {
-                val currentVariables = currentFrame.variables.toVerificationTypeList(constantPoolEditor)
-                val currentStack     = currentFrame.stack.toVerificationTypeList(constantPoolEditor)
-                frame = fullFrame(offsetDelta, currentVariables, currentStack)
+                val currentStack = currentFrame.stack.toVerificationTypeList(constantPoolEditor)
+                frame = fullFrame(offsetDelta, currentVariables.toVerificationTypeList(constantPoolEditor), currentStack)
             }
 
             logger.trace { "offset $offset: adding frame $frame"}
@@ -96,5 +101,21 @@ internal class StackMapTableComputer constructor(private val classFile: ClassFil
 
             lastOffsetFramePair = Pair(offset, currentFrame)
         }
+    }
+
+    private fun trimNonAliveValues(frame: Frame): List<Value> {
+        val result = mutableListOf<Pair<Value, Boolean>>()
+        var i = 0
+        while (i < frame.variables.size) {
+            val value = frame.variables[i]
+            result.add(Pair(value, frame.isAlive(i)))
+            i += value.operandSize
+        }
+
+        while (result.isNotEmpty() && !result.last().second) {
+            result.removeLast()
+        }
+
+        return result.map { it.first }
     }
 }

@@ -44,23 +44,23 @@ private object NopLogger: Logger {
     override val isErrorEnabled: Boolean
         get() = false
 
-    override fun trace(obj: Object) {}
+    override fun trace(obj: Any) {}
     override fun trace(msg: String) {}
     override fun trace(msg: () -> String) {}
 
-    override fun debug(obj: Object) {}
+    override fun debug(obj: Any) {}
     override fun debug(msg: String) {}
     override fun debug(msg: () -> String) {}
 
-    override fun info(obj: Object) {}
+    override fun info(obj: Any) {}
     override fun info(msg: String) {}
     override fun info (msg: () -> String) {}
 
-    override fun warn(obj: Object) {}
+    override fun warn(obj: Any) {}
     override fun warn(msg: String) {}
     override fun warn (msg: () -> String) {}
 
-    override fun error(obj: Object) {}
+    override fun error(obj: Any) {}
     override fun error(msg: String) {}
     override fun error(msg: () -> String) {}
 }
@@ -73,7 +73,7 @@ private class ConsoleLogger constructor(private val loggingClass: String, minimu
     override val isWarnEnabled  = minimumLevel <= LogLevel.WARN
     override val isErrorEnabled = minimumLevel <= LogLevel.ERROR
 
-    override fun trace(obj: Object) {
+    override fun trace(obj: Any) {
         if (isTraceEnabled) {
             log(LogLevel.TRACE, obj.toString())
         }
@@ -91,7 +91,7 @@ private class ConsoleLogger constructor(private val loggingClass: String, minimu
         }
     }
 
-    override fun debug(obj: Object) {
+    override fun debug(obj: Any) {
         if (isDebugEnabled) {
             log(LogLevel.DEBUG, obj.toString())
         }
@@ -109,7 +109,7 @@ private class ConsoleLogger constructor(private val loggingClass: String, minimu
         }
     }
 
-    override fun info(obj: Object) {
+    override fun info(obj: Any) {
         if (isInfoEnabled) {
             log(LogLevel.INFO, obj.toString())
         }
@@ -127,7 +127,7 @@ private class ConsoleLogger constructor(private val loggingClass: String, minimu
         }
     }
 
-    override fun warn(obj: Object) {
+    override fun warn(obj: Any) {
         if (isWarnEnabled) {
             log(LogLevel.WARN, obj.toString())
         }
@@ -145,7 +145,7 @@ private class ConsoleLogger constructor(private val loggingClass: String, minimu
         }
     }
 
-    override fun error(obj: Object) {
+    override fun error(obj: Any) {
         if (isErrorEnabled) {
             log(LogLevel.ERROR, obj.toString())
         }

@@ -13,10 +13,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.tinygears.bat.classfile.evaluation
+package org.tinygears.bat.classfile.evaluation.value
 
-import org.tinygears.bat.classfile.instruction.JvmInstruction
+import org.tinygears.bat.classfile.attribute.preverification.TopVariable
+import org.tinygears.bat.classfile.attribute.preverification.VerificationType
+import org.tinygears.bat.classfile.constant.editor.ConstantPoolEditor
 
-fun interface FrameProcessor {
-    fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
+object TopValue: Category1Value {
+
+    override fun toVerificationType(constantPoolEditor: ConstantPoolEditor): VerificationType {
+        return TopVariable
+    }
+
+    override fun toString(): String {
+        return "top"
+    }
 }

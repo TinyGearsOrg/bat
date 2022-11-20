@@ -13,10 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.tinygears.bat.classfile.evaluation
+package org.tinygears.bat.classfile.evaluation.value
 
-import org.tinygears.bat.classfile.instruction.JvmInstruction
-
-fun interface FrameProcessor {
-    fun handleInstruction(offset: Int, flags: Int, instruction: JvmInstruction, frameBefore: Frame, frameAfter: Frame)
+object UnknownFloatValue: FloatValue {
+    override fun toString(): String {
+        return "float"
+    }
 }

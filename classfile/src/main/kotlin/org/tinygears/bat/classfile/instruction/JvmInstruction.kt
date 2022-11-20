@@ -32,6 +32,9 @@ abstract class JvmInstruction protected constructor(val opCode: JvmOpCode) {
         return opCode.length
     }
 
+    val canonicalOpCode: JvmOpCode
+        get() = opCode.canonicalOpCode ?: opCode
+
     abstract fun read(instructions: ByteArray, offset: Int)
 
     open fun write(writer: InstructionWriter, offset: Int, offsetMap: OffsetMap? = null) {
