@@ -9,3 +9,4 @@ include 'dexdump'
 include 'common'
 include 'jasm'
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

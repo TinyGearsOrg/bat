@@ -1,21 +1,15 @@
 plugins {
-    kotlin("jvm")
+    id("module")
 }
 
 base {
     archivesName.set("bat-dexdump")
 }
 
-java.sourceCompatibility = JavaVersion.VERSION_11
-
-tasks.test {
-    useJUnitPlatform()
-}
-
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":dexfile"))
+    implementation(projects.common)
+    implementation(projects.dexfile)
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-params:${Versions.jupiterVersion}")
+    testImplementation(libs.jupiter.params)
 }

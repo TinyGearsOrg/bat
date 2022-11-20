@@ -1,13 +1,11 @@
 plugins {
-    kotlin("jvm")
+    id("library")
     id("antlr")
 }
 
 base {
     archivesName.set("bat-smali")
 }
-
-java.sourceCompatibility = JavaVersion.VERSION_11
 
 tasks {
     compileKotlin {
@@ -22,8 +20,6 @@ tasks {
 }
 
 tasks.test {
-    useJUnitPlatform()
-
     // propagate the ANDROID_RUNTIMES property to test execution
     systemProperty("ANDROID_RUNTIMES", System.getProperty("ANDROID_RUNTIMES"))
 }
@@ -33,13 +29,13 @@ configurations[JavaPlugin.API_CONFIGURATION_NAME].let { apiConfiguration ->
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":dexfile"))
+    implementation(projects.common)
+    implementation(projects.dexfile)
 
     // antlr
-    antlr("org.antlr:antlr4:${Versions.antlrVersion}")
-    implementation("org.antlr:antlr4-runtime:${Versions.antlrVersion}")
+    antlr(libs.antlr)
+    implementation(libs.antlr.runtime)
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-params:${Versions.jupiterVersion}")
+    testImplementation(libs.jupiter.params)
 }

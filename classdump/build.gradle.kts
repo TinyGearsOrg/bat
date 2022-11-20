@@ -1,20 +1,14 @@
 plugins {
-    kotlin("jvm")
+    id("module")
 }
 
 base {
     archivesName.set("bat-classdump")
 }
 
-java.sourceCompatibility = JavaVersion.VERSION_11
-
-tasks.test {
-    useJUnitPlatform()
-}
-
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":classfile"))
+    implementation(projects.common)
+    implementation(projects.classfile)
 
     testImplementation(kotlin("test"))
 }

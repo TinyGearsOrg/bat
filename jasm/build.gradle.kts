@@ -1,13 +1,11 @@
 plugins {
-    kotlin("jvm")
+    id("library")
     id("antlr")
 }
 
 base {
     archivesName.set("bat-jasm")
 }
-
-java.sourceCompatibility = JavaVersion.VERSION_11
 
 tasks {
     compileKotlin {
@@ -21,22 +19,18 @@ tasks {
     }
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
-
 configurations[JavaPlugin.API_CONFIGURATION_NAME].let { apiConfiguration ->
   apiConfiguration.setExtendsFrom(apiConfiguration.extendsFrom.filter { it.name != "antlr" })
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":classfile"))
+    implementation(projects.common)
+    implementation(projects.classfile)
 
     // antlr
-    antlr("org.antlr:antlr4:${Versions.antlrVersion}")
-    implementation("org.antlr:antlr4-runtime:${Versions.antlrVersion}")
+    antlr(libs.antlr)
+    implementation(libs.antlr.runtime)
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-params:${Versions.jupiterVersion}")
+    testImplementation(libs.jupiter.params)
 }

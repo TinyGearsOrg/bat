@@ -1,16 +1,10 @@
 plugins {
-    kotlin("jvm")
+    id("module")
     distribution
 }
 
 base {
     archivesName.set("bat-commands")
-}
-
-java.sourceCompatibility = JavaVersion.VERSION_11
-
-tasks.test {
-    useJUnitPlatform()
 }
 
 distributions {
@@ -32,16 +26,16 @@ distributions {
 }
 
 dependencies {
-    implementation("info.picocli:picocli:${Versions.picocliVersion}")
+    implementation(libs.picocli)
 
-    implementation(project(":common"))
-    implementation(project(":classfile"))
-    implementation(project(":dexfile"))
-    implementation(project(":smali"))
-    implementation(project(":jasm"))
-    implementation(project(":dexdump"))
-    implementation(project(":classdump"))
+    implementation(projects.common)
+    implementation(projects.classfile)
+    implementation(projects.dexfile)
+    implementation(projects.smali)
+    implementation(projects.jasm)
+    implementation(projects.dexdump)
+    implementation(projects.classdump)
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-params:${Versions.jupiterVersion}")
+    testImplementation(libs.jupiter.params)
 }
