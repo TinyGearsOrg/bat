@@ -18,13 +18,14 @@ package org.tinygears.bat.io
 
 import java.io.OutputStream
 import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.outputStream
 
 class DirectoryOutputSink private constructor(private val baseDir: Path): OutputSink {
     override fun createOutputStream(entry: DataEntry): OutputStream {
-        val elementPath = Path.of(entry.name)
+        val elementPath = Paths.get(entry.name)
 
         val outputPath = baseDir.resolve(elementPath)
 

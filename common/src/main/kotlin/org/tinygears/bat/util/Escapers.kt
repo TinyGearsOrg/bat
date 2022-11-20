@@ -81,7 +81,7 @@ internal abstract class CharEscaper protected constructor() {
      * @throws NullPointerException if `string` is null
      */
     protected fun escapeSlow(s: String, index: Int): String {
-        var index = index
+        @Suppress("NAME_SHADOWING") var index = index
         val slen = s.length
 
         // Get a destination buffer and setup some loop variables.

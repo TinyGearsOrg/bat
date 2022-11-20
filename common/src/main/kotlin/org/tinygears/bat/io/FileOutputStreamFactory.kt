@@ -19,11 +19,12 @@ import java.io.IOException
 import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.exists
 
 class FileOutputStreamFactory(private val baseDir:         Path,
                               private val extension:       String,
-                              private val pathTransformer: (String) -> Path = { Path.of(it) }) : OutputStreamFactory {
+                              private val pathTransformer: (String) -> Path = { Paths.get(it) }) : OutputStreamFactory {
 
     @Throws(IOException::class)
     override fun createOutputStream(element: String): OutputStream {
