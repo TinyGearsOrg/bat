@@ -9,6 +9,4 @@ base {
 dependencies {
     implementation(projects.common)
     implementation(projects.classfile)
-
-    testImplementation(kotlin("test"))
 }

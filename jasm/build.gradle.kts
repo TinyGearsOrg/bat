@@ -31,6 +31,5 @@ dependencies {
     antlr(libs.antlr)
     implementation(libs.antlr.runtime)
 
-    testImplementation(kotlin("test"))
     testImplementation(libs.jupiter.params)
 }

@@ -36,6 +36,5 @@ dependencies {
     implementation(projects.dexdump)
     implementation(projects.classdump)
 
-    testImplementation(kotlin("test"))
     testImplementation(libs.jupiter.params)
 }
